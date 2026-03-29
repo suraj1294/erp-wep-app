@@ -1,16 +1,8 @@
-import { Geist_Mono, Inter } from "next/font/google"
-
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import { Toaster } from "@workspace/ui/components/sonner"
 import { cn } from "@workspace/ui/lib/utils"
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
-
-const fontMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-mono",
-})
 
 export default function RootLayout({
   children,
@@ -21,16 +13,23 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      style={
+        {
+          "--font-sans":
+            '"Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+          "--font-mono":
+            '"Geist Mono", "SFMono-Regular", "SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+        } as React.CSSProperties
+      }
       className={cn(
         "antialiased",
-        fontMono.variable,
-        "font-sans",
-        inter.variable
+        "font-sans"
       )}
     >
       <body>
         <ThemeProvider>
           <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>

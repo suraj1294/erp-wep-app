@@ -8,6 +8,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:delete-company": "node ./scripts/delete-company.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
