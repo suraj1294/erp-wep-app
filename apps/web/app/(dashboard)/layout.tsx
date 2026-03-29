@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { getServerSession } from "@/lib/auth-server"
 import { db } from "@workspace/db/client"
-import { companyUsers } from "@workspace/db/schema"
+import { companies, companyUsers } from "@workspace/db/schema"
 
 export default async function DashboardLayout({
   children,
@@ -20,7 +20,14 @@ export default async function DashboardLayout({
   const membership = await db
     .select({ companyId: companyUsers.companyId })
     .from(companyUsers)
-    .where(eq(companyUsers.userId, session.user.id))
+    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
+    .where(
+      and(
+        eq(companyUsers.userId, session.user.id),
+        eq(companyUsers.isActive, true),
+        eq(companies.isActive, true)
+      )
+    )
     .limit(1)
 
   if (membership.length === 0) {

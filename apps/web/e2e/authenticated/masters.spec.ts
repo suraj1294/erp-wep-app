@@ -1,4 +1,50 @@
 import { test, expect, type Page } from "@playwright/test"
+import { readFileSync } from "node:fs"
+import { resolve } from "node:path"
+
+const envFilePath = resolve(process.cwd(), ".env.local")
+for (const line of readFileSync(envFilePath, "utf8").split("\n")) {
+  const trimmed = line.trim()
+  if (!trimmed || trimmed.startsWith("#")) {
+    continue
+  }
+
+  const separatorIndex = trimmed.indexOf("=")
+  if (separatorIndex === -1) {
+    continue
+  }
+
+  const key = trimmed.slice(0, separatorIndex).trim()
+  let value = trimmed.slice(separatorIndex + 1).trim()
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
+    value = value.slice(1, -1)
+  }
+
+  if (!process.env[key]) {
+    process.env[key] = value
+  }
+}
+
+const { eq } = await import("drizzle-orm")
+const { db } = await import("@workspace/db/client")
+const {
+  accountGroups,
+  accounts,
+  companies,
+  companyUsers,
+  items,
+  locations,
+  parties,
+  unitsOfMeasure,
+  user,
+  voucherTypes,
+} = await import("@workspace/db/schema")
+const { seedCompanyDefaults } = await import(
+  "@workspace/db/seeds/company-defaults"
+)
 
 /**
  * Masters CRUD tests.
@@ -27,13 +73,72 @@ import { test, expect, type Page } from "@playwright/test"
 // Shared helpers
 // ---------------------------------------------------------------------------
 
-const UUID_PATH = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
+const FIXTURE_COMPANY_NAME = `Masters E2E ${Date.now()}`
 
-/** Navigate to /app and wait for the company redirect. */
+let companyId = ""
+
+async function createFixtureCompany() {
+  const [owner] = await db
+    .select({ id: user.id })
+    .from(user)
+    .where(eq(user.email, E2E_EMAIL))
+
+  if (!owner) {
+    throw new Error(`E2E user not found for ${E2E_EMAIL}`)
+  }
+
+  const [company] = await db
+    .insert(companies)
+    .values({
+      name: FIXTURE_COMPANY_NAME,
+      displayName: FIXTURE_COMPANY_NAME,
+      createdBy: owner.id,
+    })
+    .returning({ id: companies.id })
+
+  if (!company) {
+    throw new Error("Failed to create masters fixture company")
+  }
+
+  await db.insert(companyUsers).values({
+    companyId: company.id,
+    userId: owner.id,
+    role: "owner",
+  })
+
+  await seedCompanyDefaults(company.id)
+
+  return company.id
+}
+
+async function deleteFixtureCompany(targetCompanyId: string) {
+  await db.delete(parties).where(eq(parties.companyId, targetCompanyId))
+  await db.delete(items).where(eq(items.companyId, targetCompanyId))
+  await db.delete(locations).where(eq(locations.companyId, targetCompanyId))
+  await db
+    .delete(unitsOfMeasure)
+    .where(eq(unitsOfMeasure.companyId, targetCompanyId))
+  await db
+    .delete(voucherTypes)
+    .where(eq(voucherTypes.companyId, targetCompanyId))
+  await db.delete(accounts).where(eq(accounts.companyId, targetCompanyId))
+  await db
+    .delete(accountGroups)
+    .where(eq(accountGroups.companyId, targetCompanyId))
+  await db
+    .delete(companyUsers)
+    .where(eq(companyUsers.companyId, targetCompanyId))
+  await db.delete(companies).where(eq(companies.id, targetCompanyId))
+}
+
+/** Navigate to the fixture company dashboard. */
 async function gotoCompanyDashboard(page: Page): Promise<string> {
-  await page.goto("/app")
-  await page.waitForURL((url) => UUID_PATH.test(url.pathname), { timeout: 45_000 })
-  return new URL(page.url()).pathname.split("/")[1]!
+  await page.goto(`/${companyId}`)
+  await page.waitForURL((url) => url.pathname === `/${companyId}`, {
+    timeout: 45_000,
+  })
+  return companyId
 }
 
 /** Ensure the sidebar is expanded (desktop layout). */
@@ -61,6 +166,16 @@ async function expandMasters(page: Page) {
 async function gotoMaster(page: Page, companyId: string, segment: string) {
   await page.goto(`/${companyId}/masters/${segment}`)
 }
+
+test.beforeAll(async () => {
+  companyId = await createFixtureCompany()
+})
+
+test.afterAll(async () => {
+  if (companyId) {
+    await deleteFixtureCompany(companyId)
+  }
+})
 
 /**
  * Assert the active sub-item in the sidebar matches the expected label.
@@ -113,10 +228,7 @@ function dialogNameInput(page: Page) {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Account Groups", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "account-groups")
     await expect(
       page.getByRole("heading", { name: "Account Groups" })
@@ -183,18 +295,25 @@ test.describe("Masters — Account Groups", () => {
   })
 
   test("delete dialog shows record name and cancel leaves record intact", async ({ page }) => {
-    const firstRow = page.locator("tbody tr").first()
-    if (!(await firstRow.isVisible())) return
+    const name = `Cancel AG ${Date.now()}`
+    await clickAddButton(page, "Add Group")
+    await expectDialogOpen(page, "Add Account Group")
+    await dialogNameInput(page).fill(name)
+    await page.getByRole("dialog").getByRole("combobox").nth(0).click()
+    await page.getByRole("option", { name: "Asset" }).click()
+    await page.getByRole("dialog").getByRole("combobox").nth(1).click()
+    await page.getByRole("option", { name: "Debit" }).click()
+    await saveDialog(page)
 
-    const cellText = await firstRow.locator("td").first().textContent()
-    await firstRow.locator("button").last().click()
+    const row = page.locator("tbody tr").filter({ hasText: name })
+    await row.locator("button").last().click()
 
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await expect(page.getByRole("alertdialog")).toContainText(cellText ?? "")
+    await expect(page.getByRole("alertdialog")).toContainText(name)
 
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("alertdialog")).not.toBeVisible()
-    await expect(page.getByRole("cell", { name: cellText ?? "" })).toBeVisible()
+    await expect(page.getByRole("cell", { name, exact: true })).toBeVisible()
   })
 })
 
@@ -203,10 +322,7 @@ test.describe("Masters — Account Groups", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Accounts", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "accounts")
     await expect(
       page.getByRole("heading", { name: "Accounts" })
@@ -260,18 +376,21 @@ test.describe("Masters — Accounts", () => {
   })
 
   test("delete dialog shows record name and cancel leaves record intact", async ({ page }) => {
-    const firstRow = page.locator("tbody tr").first()
-    if (!(await firstRow.isVisible())) return
+    const name = `Cancel Account ${Date.now()}`
+    await clickAddButton(page, "Add Account")
+    await expectDialogOpen(page, "Add Account")
+    await dialogNameInput(page).fill(name)
+    await saveDialog(page)
 
-    const cellText = await firstRow.locator("td").first().textContent()
-    await firstRow.locator("button").last().click()
+    const row = page.locator("tbody tr").filter({ hasText: name })
+    await row.locator("button").last().click()
 
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await expect(page.getByRole("alertdialog")).toContainText(cellText ?? "")
+    await expect(page.getByRole("alertdialog")).toContainText(name)
 
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("alertdialog")).not.toBeVisible()
-    await expect(page.getByRole("cell", { name: cellText ?? "" })).toBeVisible()
+    await expect(page.getByRole("cell", { name, exact: true })).toBeVisible()
   })
 })
 
@@ -280,10 +399,7 @@ test.describe("Masters — Accounts", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Voucher Types", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "voucher-types")
     await expect(
       page.getByRole("heading", { name: "Voucher Types" })
@@ -369,18 +485,24 @@ test.describe("Masters — Voucher Types", () => {
   })
 
   test("delete dialog shows record name and cancel leaves record intact", async ({ page }) => {
-    const firstRow = page.locator("tbody tr").first()
-    if (!(await firstRow.isVisible())) return
+    const ts = Date.now()
+    const name = `Cancel VT ${ts}`
+    await clickAddButton(page, "Add Voucher Type")
+    await page.getByRole("dialog").getByPlaceholder("e.g. Sales Invoice").fill(name)
+    await page.getByRole("dialog").getByPlaceholder("e.g. SI").fill(`C${ts}`.slice(-6))
+    await page.getByRole("dialog").getByRole("combobox").click()
+    await page.getByRole("option", { name: "Journal" }).click()
+    await saveDialog(page)
 
-    const cellText = await firstRow.locator("td").first().textContent()
-    await firstRow.locator("button").last().click()
+    const row = page.locator("tbody tr").filter({ hasText: name })
+    await row.locator("button").last().click()
 
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await expect(page.getByRole("alertdialog")).toContainText(cellText ?? "")
+    await expect(page.getByRole("alertdialog")).toContainText(name)
 
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("alertdialog")).not.toBeVisible()
-    await expect(page.getByRole("cell", { name: cellText ?? "" })).toBeVisible()
+    await expect(page.getByRole("cell", { name, exact: true })).toBeVisible()
   })
 
   test("deletes a non-system voucher type", async ({ page }) => {
@@ -410,10 +532,7 @@ test.describe("Masters — Voucher Types", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Parties", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "parties")
     await expect(
       page.getByRole("heading", { name: "Parties" })
@@ -485,18 +604,23 @@ test.describe("Masters — Parties", () => {
   })
 
   test("delete dialog shows record name and cancel leaves record intact", async ({ page }) => {
-    const firstRow = page.locator("tbody tr").first()
-    if (!(await firstRow.isVisible())) return
+    const name = `Cancel Party ${Date.now()}`
+    await clickAddButton(page, "Add Party")
+    await expectDialogOpen(page, "Add Party")
+    await page.getByRole("dialog").getByPlaceholder("Party name").fill(name)
+    await page.getByRole("dialog").getByRole("combobox").click()
+    await page.getByRole("option", { name: "Customer" }).click()
+    await saveDialog(page)
 
-    const cellText = await firstRow.locator("td").first().textContent()
-    await firstRow.locator("button").last().click()
+    const row = page.locator("tbody tr").filter({ hasText: name })
+    await row.locator("button").last().click()
 
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await expect(page.getByRole("alertdialog")).toContainText(cellText ?? "")
+    await expect(page.getByRole("alertdialog")).toContainText(name)
 
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("alertdialog")).not.toBeVisible()
-    await expect(page.getByRole("cell", { name: cellText ?? "" })).toBeVisible()
+    await expect(page.getByRole("cell", { name, exact: true })).toBeVisible()
   })
 })
 
@@ -505,10 +629,7 @@ test.describe("Masters — Parties", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Items", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "items")
     await expect(
       page.getByRole("heading", { name: "Items" })
@@ -564,18 +685,21 @@ test.describe("Masters — Items", () => {
   })
 
   test("delete dialog shows record name and cancel leaves record intact", async ({ page }) => {
-    const firstRow = page.locator("tbody tr").first()
-    if (!(await firstRow.isVisible())) return
+    const name = `Cancel Item ${Date.now()}`
+    await clickAddButton(page, "Add Item")
+    await expectDialogOpen(page, "Add Item")
+    await page.getByRole("dialog").getByPlaceholder("Item name").fill(name)
+    await saveDialog(page)
 
-    const cellText = await firstRow.locator("td").first().textContent()
-    await firstRow.locator("button").last().click()
+    const row = page.locator("tbody tr").filter({ hasText: name })
+    await row.locator("button").last().click()
 
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await expect(page.getByRole("alertdialog")).toContainText(cellText ?? "")
+    await expect(page.getByRole("alertdialog")).toContainText(name)
 
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("alertdialog")).not.toBeVisible()
-    await expect(page.getByRole("cell", { name: cellText ?? "" })).toBeVisible()
+    await expect(page.getByRole("cell", { name, exact: true })).toBeVisible()
   })
 })
 
@@ -584,10 +708,7 @@ test.describe("Masters — Items", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Units of Measure", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "units")
     await expect(
       page.getByRole("heading", { name: "Units of Measure" })
@@ -663,18 +784,23 @@ test.describe("Masters — Units of Measure", () => {
   })
 
   test("delete dialog shows record name and cancel leaves record intact", async ({ page }) => {
-    const firstRow = page.locator("tbody tr").first()
-    if (!(await firstRow.isVisible())) return
+    const ts = Date.now()
+    const name = `Cancel Unit ${ts}`
+    await clickAddButton(page, "Add Unit")
+    await expectDialogOpen(page, "Add Unit")
+    await page.getByRole("dialog").getByPlaceholder("e.g. Kilogram").fill(name)
+    await page.getByRole("dialog").getByPlaceholder("e.g. kg").fill(`cu${String(ts).slice(-2)}`)
+    await saveDialog(page)
 
-    const cellText = await firstRow.locator("td").first().textContent()
-    await firstRow.locator("button").last().click()
+    const row = page.locator("tbody tr").filter({ hasText: name })
+    await row.locator("button").last().click()
 
     await expect(page.getByRole("alertdialog")).toBeVisible()
-    await expect(page.getByRole("alertdialog")).toContainText(cellText ?? "")
+    await expect(page.getByRole("alertdialog")).toContainText(name)
 
     await page.getByRole("alertdialog").getByRole("button", { name: "Cancel" }).click()
     await expect(page.getByRole("alertdialog")).not.toBeVisible()
-    await expect(page.getByRole("cell", { name: cellText ?? "" })).toBeVisible()
+    await expect(page.getByRole("cell", { name, exact: true })).toBeVisible()
   })
 })
 
@@ -683,10 +809,7 @@ test.describe("Masters — Units of Measure", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters — Locations", () => {
-  let companyId: string
-
   test.beforeEach(async ({ page }) => {
-    companyId = await gotoCompanyDashboard(page)
     await gotoMaster(page, companyId, "locations")
     await expect(
       page.getByRole("heading", { name: "Locations" })
@@ -780,7 +903,7 @@ test.describe("Masters sidebar navigation", () => {
   test("all 7 master links are present and scoped to the current companyId", async ({
     page,
   }) => {
-    const companyId = await gotoCompanyDashboard(page)
+    await gotoCompanyDashboard(page)
     await expandMasters(page)
 
     const masters = [

@@ -33,12 +33,11 @@ import {
   Book01Icon,
   DashboardSquare01Icon,
   Database01Icon,
-  Invoice01Icon,
   Logout01Icon,
+  NoteEditIcon,
   Package01Icon,
-  ShoppingCart01Icon,
+  Settings01Icon,
   User02Icon,
-  Wallet01Icon,
 } from "@hugeicons/core-free-icons"
 import type { IconSvgElement } from "@hugeicons/react"
 
@@ -78,11 +77,25 @@ export function DashboardShell({
   const currentCompany = companies.find((c) => c.id === currentCompanyId)
 
   const mainNavItems: NavItem[] = [
-    { label: "Dashboard", href: `/${currentCompanyId}`,           icon: DashboardSquare01Icon },
-    { label: "Sales",     href: `/${currentCompanyId}/sales`,     icon: Invoice01Icon },
-    { label: "Purchase",  href: `/${currentCompanyId}/purchase`,  icon: ShoppingCart01Icon },
-    { label: "Banking",   href: `/${currentCompanyId}/banking`,   icon: Wallet01Icon },
+    { label: "Dashboard", href: `/${currentCompanyId}`, icon: DashboardSquare01Icon },
   ]
+
+  const transactionNavItems: MasterNavItem[] = [
+    { label: "Sales",         href: `/${currentCompanyId}/sales` },
+    { label: "Purchase",      href: `/${currentCompanyId}/purchase` },
+    { label: "Banking",       href: `/${currentCompanyId}/banking` },
+    { label: "Journal",       href: `/${currentCompanyId}/journal` },
+    { label: "Credit Notes",  href: `/${currentCompanyId}/credit-notes` },
+    { label: "Debit Notes",   href: `/${currentCompanyId}/debit-notes` },
+  ]
+
+  const isTransactionsActive =
+    pathname.startsWith(`/${currentCompanyId}/sales`) ||
+    pathname.startsWith(`/${currentCompanyId}/purchase`) ||
+    pathname.startsWith(`/${currentCompanyId}/banking`) ||
+    pathname.startsWith(`/${currentCompanyId}/journal`) ||
+    pathname.startsWith(`/${currentCompanyId}/credit-notes`) ||
+    pathname.startsWith(`/${currentCompanyId}/debit-notes`)
 
   const masterNavItems: MasterNavItem[] = [
     { label: "Account Groups",    href: `/${currentCompanyId}/masters/account-groups` },
@@ -98,6 +111,10 @@ export function DashboardShell({
     { label: "Chart of Accounts", href: `/${currentCompanyId}/accounts`, icon: Book01Icon },
     { label: "Parties",           href: `/${currentCompanyId}/parties`,  icon: User02Icon },
     { label: "Items",             href: `/${currentCompanyId}/items`,    icon: Package01Icon },
+  ]
+
+  const secondaryNavItems: NavItem[] = [
+    { label: "Settings", href: `/${currentCompanyId}/settings`, icon: Settings01Icon },
   ]
 
   const isMastersActive = pathname.startsWith(`/${currentCompanyId}/masters`)
@@ -175,6 +192,41 @@ export function DashboardShell({
             </SidebarMenu>
           </SidebarGroup>
 
+          {/* Transactions — collapsible sub-menu */}
+          <SidebarGroup>
+            <SidebarGroupLabel>Transactions</SidebarGroupLabel>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <Collapsible defaultOpen={isTransactionsActive} className="group/collapsible-txn">
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton tooltip="Transactions" isActive={isTransactionsActive}>
+                      <HugeiconsIcon icon={NoteEditIcon} className="size-4" />
+                      <span>Transactions</span>
+                      <HugeiconsIcon
+                        icon={ArrowDown01Icon}
+                        className="ml-auto size-3 transition-transform group-data-[state=open]/collapsible-txn:rotate-180"
+                      />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {transactionNavItems.map((item) => (
+                        <SidebarMenuSubItem key={item.href}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={pathname.startsWith(item.href)}
+                          >
+                            <Link href={item.href}>{item.label}</Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </Collapsible>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+
           {/* Masters — collapsible sub-menu */}
           <SidebarGroup>
             <SidebarGroupLabel>Masters</SidebarGroupLabel>
@@ -212,6 +264,26 @@ export function DashboardShell({
             <SidebarGroupLabel>Reports</SidebarGroupLabel>
             <SidebarMenu>
               {reportNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={item.label}
+                  >
+                    <Link href={item.href}>
+                      <HugeiconsIcon icon={item.icon} className="size-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+
+          <SidebarGroup>
+            <SidebarGroupLabel>Manage</SidebarGroupLabel>
+            <SidebarMenu>
+              {secondaryNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild

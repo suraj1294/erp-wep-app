@@ -1,6 +1,6 @@
 import { eq, and } from "drizzle-orm"
 import { db } from "@workspace/db/client"
-import { companyUsers } from "@workspace/db/schema"
+import { companies, companyUsers } from "@workspace/db/schema"
 import { requireSession } from "./auth-server"
 
 const ROLE_HIERARCHY: Record<string, number> = {
@@ -16,13 +16,23 @@ export async function requireCompanyAccess(
 ) {
   const session = await requireSession()
 
-  const membership = await db.query.companyUsers.findFirst({
-    where: and(
-      eq(companyUsers.companyId, companyId),
-      eq(companyUsers.userId, session.user.id),
-      eq(companyUsers.isActive, true)
-    ),
-  })
+  const [membership] = await db
+    .select({
+      id: companyUsers.id,
+      role: companyUsers.role,
+      isActive: companyUsers.isActive,
+    })
+    .from(companyUsers)
+    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
+    .where(
+      and(
+        eq(companyUsers.companyId, companyId),
+        eq(companyUsers.userId, session.user.id),
+        eq(companyUsers.isActive, true),
+        eq(companies.isActive, true)
+      )
+    )
+    .limit(1)
 
   if (!membership) {
     throw new Error("You do not have access to this company")

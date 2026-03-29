@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation"
-import { eq } from "drizzle-orm"
+import { and, eq } from "drizzle-orm"
 import { getServerSession } from "@/lib/auth-server"
 import { db } from "@workspace/db/client"
 import { companyUsers, companies } from "@workspace/db/schema"
@@ -27,7 +27,13 @@ export default async function CompanyLayout({
     })
     .from(companyUsers)
     .innerJoin(companies, eq(companyUsers.companyId, companies.id))
-    .where(eq(companyUsers.userId, session.user.id))
+    .where(
+      and(
+        eq(companyUsers.userId, session.user.id),
+        eq(companyUsers.isActive, true),
+        eq(companies.isActive, true)
+      )
+    )
 
   if (userCompanies.length === 0) {
     redirect("/create-company")
