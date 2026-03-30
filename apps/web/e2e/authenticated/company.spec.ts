@@ -4,13 +4,13 @@ import { test, expect, type Page } from "@playwright/test"
  * Company-scoped access control tests.
  */
 
-const UUID_PATH = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
 
 const sidebarTrigger = (page: Page) => page.locator('[data-sidebar="trigger"]')
 
 async function gotoCompanyDashboard(page: Page) {
   await page.goto("/app")
-  await page.waitForURL((url) => UUID_PATH.test(url.pathname), { timeout: 45_000 })
+  await page.waitForURL((url) => COMPANY_PATH.test(url.pathname), { timeout: 45_000 })
 }
 
 async function expandSidebar(page: Page) {
@@ -21,21 +21,32 @@ async function expandSidebar(page: Page) {
   }
 }
 
+async function expandTransactions(page: Page) {
+  await expandSidebar(page)
+  const salesLink = page.getByRole("link", { name: "Sales" })
+  if (!(await salesLink.isVisible())) {
+    await page
+      .locator('button[data-sidebar="menu-button"]', { hasText: "Transactions" })
+      .click()
+    await expect(salesLink).toBeVisible()
+  }
+}
+
 test.describe("Company access control", () => {
-  test("navigating to an unknown company ID redirects to the user's own company", async ({
+  test("navigating to an unknown company slug redirects to the user's own company", async ({
     page,
   }) => {
-    await page.goto("/00000000-0000-0000-0000-000000000001")
+    await page.goto("/unknown-company-slug")
 
-    // [companyId] layout redirects unknown companies to the user's first company
+    // [companySlug] layout redirects unknown companies to the user's first company
     await page.waitForURL(
       (url) =>
-        url.pathname !== "/00000000-0000-0000-0000-000000000001" &&
+        url.pathname !== "/unknown-company-slug" &&
         !url.pathname.startsWith("/sign-in"),
       { timeout: 45_000 }
     )
 
-    await expect(page).not.toHaveURL("/00000000-0000-0000-0000-000000000001")
+    await expect(page).not.toHaveURL("/unknown-company-slug")
     await expect(page.getByRole("heading", { name: "Company Dashboard" })).toBeVisible()
   })
 
@@ -52,22 +63,23 @@ test.describe("Company access control", () => {
     await expect(page.locator("header").getByText("Acme Corp")).toBeVisible()
   })
 
-  test("sidebar nav links are scoped to the current companyId", async ({ page }) => {
+  test("sidebar nav links are scoped to the current company slug", async ({ page }) => {
     await gotoCompanyDashboard(page)
     await expandSidebar(page)
+    await expandTransactions(page)
 
-    const companyId = new URL(page.url()).pathname.split("/")[1]
+    const companySlug = new URL(page.url()).pathname.split("/")[1]
 
     await expect(
       page.getByRole("link", { name: "Chart of Accounts" })
-    ).toHaveAttribute("href", `/${companyId}/accounts`)
+    ).toHaveAttribute("href", `/${companySlug}/accounts`)
 
     await expect(
       page.getByRole("link", { name: "Parties" })
-    ).toHaveAttribute("href", `/${companyId}/parties`)
+    ).toHaveAttribute("href", `/${companySlug}/parties`)
 
     await expect(
       page.getByRole("link", { name: "Sales" })
-    ).toHaveAttribute("href", `/${companyId}/sales`)
+    ).toHaveAttribute("href", `/${companySlug}/sales`)
   })
 })

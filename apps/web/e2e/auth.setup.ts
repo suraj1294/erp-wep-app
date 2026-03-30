@@ -24,7 +24,7 @@ setup("sign in and save session", async ({ page }) => {
   await page.fill('input[type="password"]', password)
   await page.click('button[type="submit"]')
 
-  // After login, /app redirects to /{companyId} (a UUID) or /create-company.
+  // After login, /app redirects to /{companySlug} or /create-company.
   // Allow 45s for Turbopack cold-compile + DB queries across two redirects.
   await page.waitForURL(
     (url) =>

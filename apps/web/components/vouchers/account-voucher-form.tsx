@@ -15,7 +15,7 @@ import { VoucherHeader } from "./voucher-header"
 import { AccountLineItems, useAccountLines } from "./account-line-items"
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
-import { createVoucher } from "@/app/(dashboard)/[companyId]/vouchers/actions"
+import { createVoucher } from "@/app/(dashboard)/[companySlug]/vouchers/actions"
 import type { VoucherTypeOption } from "./item-voucher-form"
 
 interface AccountVoucherFormProps {

@@ -15,6 +15,7 @@ import { user } from "./auth"
 export const companies = pgTable("companies", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 120 }).notNull(),
   displayName: varchar("display_name", { length: 255 }),
   address: text("address"),
   phone: varchar("phone", { length: 20 }),
@@ -29,7 +30,7 @@ export const companies = pgTable("companies", {
   createdBy: text("created_by").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-})
+}, (table) => [uniqueIndex("companies_slug_unique").on(table.slug)])
 
 export const companyUsers = pgTable(
   "company_users",

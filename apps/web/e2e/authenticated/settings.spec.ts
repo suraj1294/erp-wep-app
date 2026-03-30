@@ -49,6 +49,7 @@ const {
 const { seedCompanyDefaults } = await import(
   "@workspace/db/seeds/company-defaults"
 )
+const { createCompanyRecord } = await import("@/lib/company-slug")
 
 const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
 const FIXTURE_NAMES = {
@@ -64,6 +65,7 @@ const FIXTURE_NAMES = {
 
 let primaryCompanyId = ""
 let secondaryCompanyId = ""
+let primaryCompanySlug = ""
 
 async function createFixtureCompany(name: string, displayName: string) {
   const [owner] = await db
@@ -75,14 +77,11 @@ async function createFixtureCompany(name: string, displayName: string) {
     throw new Error(`E2E user not found for ${E2E_EMAIL}`)
   }
 
-  const [company] = await db
-    .insert(companies)
-    .values({
-      name,
-      displayName,
-      createdBy: owner.id,
-    })
-    .returning({ id: companies.id })
+  const company = await createCompanyRecord({
+    name,
+    displayName,
+    createdBy: owner.id,
+  })
 
   if (!company) {
     throw new Error("Failed to create settings fixture company")
@@ -96,7 +95,7 @@ async function createFixtureCompany(name: string, displayName: string) {
 
   await seedCompanyDefaults(company.id)
 
-  return company.id
+  return company
 }
 
 async function deleteCompany(companyId: string) {
@@ -134,8 +133,8 @@ function companyRow(page: Page, label: string) {
   return page.locator("tbody tr").filter({ hasText: label })
 }
 
-async function gotoSettings(page: Page, companyId: string) {
-  await page.goto(`/${companyId}/settings`)
+async function gotoSettings(page: Page, companySlug: string) {
+  await page.goto(`/${companySlug}/settings`)
   await expect(page.getByText("Company Settings")).toBeVisible()
 }
 
@@ -143,14 +142,18 @@ test.describe("Company settings", () => {
   test.describe.configure({ timeout: 180_000 })
 
   test.beforeAll(async () => {
-    primaryCompanyId = await createFixtureCompany(
+    const primaryCompany = await createFixtureCompany(
       FIXTURE_NAMES.primaryName,
       FIXTURE_NAMES.primaryDisplayName
     )
-    secondaryCompanyId = await createFixtureCompany(
+    primaryCompanyId = primaryCompany.id
+    primaryCompanySlug = primaryCompany.slug
+
+    const secondaryCompany = await createFixtureCompany(
       FIXTURE_NAMES.secondaryName,
       FIXTURE_NAMES.secondaryDisplayName
     )
+    secondaryCompanyId = secondaryCompany.id
   })
 
   test.afterAll(async () => {
@@ -173,7 +176,7 @@ test.describe("Company settings", () => {
   })
 
   test("settings page loads and shows both managed companies", async ({ page }) => {
-    await gotoSettings(page, primaryCompanyId)
+    await gotoSettings(page, primaryCompanySlug)
 
     await expect(page.getByRole("link", { name: "Settings", exact: true })).toBeVisible()
     await expect(companyRow(page, FIXTURE_NAMES.primaryDisplayName)).toBeVisible()
@@ -182,7 +185,7 @@ test.describe("Company settings", () => {
   })
 
   test("updates company information", async ({ page }) => {
-    await gotoSettings(page, primaryCompanyId)
+    await gotoSettings(page, primaryCompanySlug)
 
     const row = companyRow(page, FIXTURE_NAMES.primaryDisplayName)
     await row.getByRole("button", { name: "Edit" }).click()
@@ -204,7 +207,7 @@ test.describe("Company settings", () => {
   })
 
   test("adds a new company from settings", async ({ page }) => {
-    await gotoSettings(page, primaryCompanyId)
+    await gotoSettings(page, primaryCompanySlug)
 
     await page.getByRole("button", { name: "Add Company" }).click()
     const dialog = page.getByRole("dialog")
@@ -218,7 +221,7 @@ test.describe("Company settings", () => {
   })
 
   test("disables a managed company", async ({ page }) => {
-    await gotoSettings(page, primaryCompanyId)
+    await gotoSettings(page, primaryCompanySlug)
 
     const row = companyRow(page, FIXTURE_NAMES.secondaryDisplayName)
     await row.getByRole("button", { name: "Disable" }).click()

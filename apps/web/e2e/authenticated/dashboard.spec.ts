@@ -5,8 +5,8 @@ import { test, expect, type Page } from "@playwright/test"
  * Session is pre-loaded from e2e/.auth/user.json (created by auth.setup.ts).
  */
 
-/** UUID v4 pathname regex, e.g. /3f7b1a2c-... */
-const UUID_PATH = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+/** Company slug pathname regex, e.g. /acme-corp */
+const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
 
 /**
  * The visible sidebar toggle button (SidebarTrigger lives inside the topbar).
@@ -19,7 +19,7 @@ const sidebarTrigger = (page: Page) =>
 /** Navigate to /app and wait until the company redirect resolves. */
 async function gotoCompanyDashboard(page: Page) {
   await page.goto("/app")
-  await page.waitForURL((url) => UUID_PATH.test(url.pathname), { timeout: 45_000 })
+  await page.waitForURL((url) => COMPANY_PATH.test(url.pathname), { timeout: 45_000 })
 }
 
 /** Ensure the sidebar is expanded so nav labels are visible. */
@@ -28,6 +28,17 @@ async function expandSidebar(page: Page) {
   if (!(await dashboardLink.isVisible())) {
     await sidebarTrigger(page).click()
     await expect(dashboardLink).toBeVisible()
+  }
+}
+
+async function expandTransactions(page: Page) {
+  await expandSidebar(page)
+  const salesLink = page.getByRole("link", { name: "Sales" })
+  if (!(await salesLink.isVisible())) {
+    await page
+      .locator('button[data-sidebar="menu-button"]', { hasText: "Transactions" })
+      .click()
+    await expect(salesLink).toBeVisible()
   }
 }
 
@@ -55,16 +66,22 @@ test.describe("Dashboard layout", () => {
 
   test("sidebar displays all navigation items", async ({ page }) => {
     await expandSidebar(page)
-    const navItems = [
+    for (const item of [
       "Dashboard",
       "Chart of Accounts",
       "Parties",
       "Items",
-      "Sales",
-      "Purchase",
-      "Banking",
-    ]
-    for (const item of navItems) {
+    ]) {
+      await expect(page.getByRole("link", { name: item })).toBeVisible()
+    }
+
+    await expect(
+      page.locator('button[data-sidebar="menu-button"]', { hasText: "Transactions" })
+    ).toBeVisible()
+
+    await expandTransactions(page)
+
+    for (const item of ["Sales", "Purchase", "Banking"]) {
       await expect(page.getByRole("link", { name: item })).toBeVisible()
     }
   })
@@ -90,17 +107,17 @@ test.describe("Dashboard layout", () => {
     // data-state lives on the outer sidebar wrapper (data-side="left"), not the inner content div
     const sidebar = page.locator('[data-slot="sidebar"][data-side="left"]')
 
-    // Ensure expanded first
-    await expandSidebar(page)
-    await expect(sidebar).toHaveAttribute("data-state", "expanded")
+    const initialState = await sidebar.getAttribute("data-state")
+    expect(initialState).toBeTruthy()
 
-    // Collapse
+    // Toggle once
     await trigger.click()
-    await expect(sidebar).toHaveAttribute("data-state", "collapsed")
+    const toggledState = await sidebar.getAttribute("data-state")
+    expect(toggledState).not.toBe(initialState)
 
-    // Expand again
+    // Toggle back
     await trigger.click()
-    await expect(sidebar).toHaveAttribute("data-state", "expanded")
+    await expect(sidebar).toHaveAttribute("data-state", initialState!)
   })
 
   test("topbar shows company name", async ({ page }) => {

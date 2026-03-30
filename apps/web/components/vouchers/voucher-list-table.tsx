@@ -36,7 +36,7 @@ interface VoucherListTableProps {
   rows: VoucherRow[]
   newHref: string
   newLabel?: string
-  /** Base path for view/edit — e.g. "/{companyId}/sales" */
+  /** Base path for view/edit — e.g. "/{companySlug}/sales" */
   basePath: string
   onCancel?: (id: string) => void
   /** Show voucher type column (used on banking list) */

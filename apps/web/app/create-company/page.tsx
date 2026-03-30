@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation"
 import { asc, eq } from "drizzle-orm"
 import { db } from "@workspace/db/client"
-import { companies, companyUsers, items, locations, parties, unitsOfMeasure } from "@workspace/db/schema"
+import { companyUsers, items, locations, parties, unitsOfMeasure } from "@workspace/db/schema"
 import { seedCompanyDefaults } from "@workspace/db/seeds/company-defaults"
 import { requireSession } from "@/lib/auth-server"
+import { createCompanyRecord } from "@/lib/company-slug"
 import {
   Card,
   CardDescription,
@@ -60,29 +61,30 @@ async function createCompanyAction(formData: FormData) {
 
   if (!name) throw new Error("Company name is required")
 
-  const [company] = await db
-    .insert(companies)
-    .values({ name, displayName, createdBy: session.user.id })
-    .returning()
+  const company = await createCompanyRecord({
+    name,
+    displayName,
+    createdBy: session.user.id,
+  })
 
   await db.insert(companyUsers).values({
-    companyId: company!.id,
+    companyId: company.id,
     userId: session.user.id,
     role: "owner",
   })
 
   // Seed standard account groups, accounts, voucher types, UoM and location
-  await seedCompanyDefaults(company!.id)
+  await seedCompanyDefaults(company.id)
 
   const [baseUnit] = await db
     .select({ id: unitsOfMeasure.id })
     .from(unitsOfMeasure)
-    .where(eq(unitsOfMeasure.companyId, company!.id))
+    .where(eq(unitsOfMeasure.companyId, company.id))
     .orderBy(asc(unitsOfMeasure.isBaseUnit), asc(unitsOfMeasure.name))
 
   const partyRows = optionalParties
     .map((party) => ({
-      companyId: company!.id,
+      companyId: company.id,
       name: party.name.trim(),
       displayName: party.displayName?.trim() || null,
       type: party.type?.trim() || "customer",
@@ -93,7 +95,7 @@ async function createCompanyAction(formData: FormData) {
 
   const itemRows = optionalItems
     .map((item) => ({
-      companyId: company!.id,
+      companyId: company.id,
       name: item.name.trim(),
       code: item.code?.trim() || null,
       salesRate: item.salesRate?.trim() || null,
@@ -104,7 +106,7 @@ async function createCompanyAction(formData: FormData) {
 
   const locationRows = optionalLocations
     .map((location) => ({
-      companyId: company!.id,
+      companyId: company.id,
       name: location.name.trim(),
       code: location.code?.trim() || null,
       phone: location.phone?.trim() || null,
@@ -123,7 +125,7 @@ async function createCompanyAction(formData: FormData) {
     await db.insert(locations).values(locationRows)
   }
 
-  redirect(`/${company!.id}`)
+  redirect(`/${company.slug}`)
 }
 
 export default function CreateCompanyPage() {

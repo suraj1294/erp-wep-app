@@ -46,7 +46,7 @@ const {
   voucherTypes,
 } = await import("@workspace/db/schema")
 
-const UUID_PATH = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
 
 const FIXTURE_NAMES = {
   skipName: `Wizard Skip ${Date.now()}`,
@@ -115,7 +115,10 @@ async function completeCompanyStep(page: Page, name: string, displayName: string
 }
 
 async function waitForCreatedCompany(page: Page) {
-  await page.waitForURL((url) => UUID_PATH.test(url.pathname), { timeout: 45_000 })
+  await page.waitForURL(
+    (url) => url.pathname !== "/create-company" && COMPANY_PATH.test(url.pathname),
+    { timeout: 45_000 }
+  )
   return new URL(page.url()).pathname.split("/")[1]!
 }
 
@@ -139,14 +142,14 @@ test.describe("Create company wizard", () => {
     await expect(page.getByText("Locations").last()).toBeVisible()
 
     await page.getByRole("button", { name: "Create Company", exact: true }).click()
-    const companyId = await waitForCreatedCompany(page)
+    const companySlug = await waitForCreatedCompany(page)
 
     await expect(page.locator("header").getByText(FIXTURE_NAMES.skipDisplayName)).toBeVisible()
 
-    await page.goto(`/${companyId}/masters/parties`)
+    await page.goto(`/${companySlug}/masters/parties`)
     await expect(page.getByText("No records found.")).toBeVisible()
 
-    await page.goto(`/${companyId}/masters/items`)
+    await page.goto(`/${companySlug}/masters/items`)
     await expect(page.getByText("No records found.")).toBeVisible()
   })
 
@@ -176,17 +179,17 @@ test.describe("Create company wizard", () => {
     await page.getByPlaceholder("+91 98765 43210").fill("8888888888")
 
     await page.getByRole("button", { name: "Create Company", exact: true }).click()
-    const companyId = await waitForCreatedCompany(page)
+    const companySlug = await waitForCreatedCompany(page)
 
     await expect(page.locator("header").getByText(FIXTURE_NAMES.fullDisplayName)).toBeVisible()
 
-    await page.goto(`/${companyId}/masters/parties`)
+    await page.goto(`/${companySlug}/masters/parties`)
     await expect(page.getByRole("cell", { name: FIXTURE_NAMES.partyName, exact: true })).toBeVisible()
 
-    await page.goto(`/${companyId}/masters/items`)
+    await page.goto(`/${companySlug}/masters/items`)
     await expect(page.getByRole("cell", { name: FIXTURE_NAMES.itemName, exact: true })).toBeVisible()
 
-    await page.goto(`/${companyId}/masters/locations`)
+    await page.goto(`/${companySlug}/masters/locations`)
     await expect(page.getByRole("cell", { name: FIXTURE_NAMES.locationName, exact: true })).toBeVisible()
   })
 })

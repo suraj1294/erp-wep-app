@@ -43,6 +43,7 @@ import type { IconSvgElement } from "@hugeicons/react"
 
 interface Company {
   id: string
+  slug: string
   name: string
   displayName: string | null
   role: string
@@ -51,7 +52,7 @@ interface Company {
 interface DashboardShellProps {
   user: { id: string; name: string; email: string }
   companies: Company[]
-  currentCompanyId: string
+  currentCompanySlug: string
   children: React.ReactNode
 }
 
@@ -69,55 +70,55 @@ interface MasterNavItem {
 export function DashboardShell({
   user,
   companies,
-  currentCompanyId,
+  currentCompanySlug,
   children,
 }: DashboardShellProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const currentCompany = companies.find((c) => c.id === currentCompanyId)
+  const currentCompany = companies.find((c) => c.slug === currentCompanySlug)
 
   const mainNavItems: NavItem[] = [
-    { label: "Dashboard", href: `/${currentCompanyId}`, icon: DashboardSquare01Icon },
+    { label: "Dashboard", href: `/${currentCompanySlug}`, icon: DashboardSquare01Icon },
   ]
 
   const transactionNavItems: MasterNavItem[] = [
-    { label: "Sales",         href: `/${currentCompanyId}/sales` },
-    { label: "Purchase",      href: `/${currentCompanyId}/purchase` },
-    { label: "Banking",       href: `/${currentCompanyId}/banking` },
-    { label: "Journal",       href: `/${currentCompanyId}/journal` },
-    { label: "Credit Notes",  href: `/${currentCompanyId}/credit-notes` },
-    { label: "Debit Notes",   href: `/${currentCompanyId}/debit-notes` },
+    { label: "Sales",         href: `/${currentCompanySlug}/sales` },
+    { label: "Purchase",      href: `/${currentCompanySlug}/purchase` },
+    { label: "Banking",       href: `/${currentCompanySlug}/banking` },
+    { label: "Journal",       href: `/${currentCompanySlug}/journal` },
+    { label: "Credit Notes",  href: `/${currentCompanySlug}/credit-notes` },
+    { label: "Debit Notes",   href: `/${currentCompanySlug}/debit-notes` },
   ]
 
   const isTransactionsActive =
-    pathname.startsWith(`/${currentCompanyId}/sales`) ||
-    pathname.startsWith(`/${currentCompanyId}/purchase`) ||
-    pathname.startsWith(`/${currentCompanyId}/banking`) ||
-    pathname.startsWith(`/${currentCompanyId}/journal`) ||
-    pathname.startsWith(`/${currentCompanyId}/credit-notes`) ||
-    pathname.startsWith(`/${currentCompanyId}/debit-notes`)
+    pathname.startsWith(`/${currentCompanySlug}/sales`) ||
+    pathname.startsWith(`/${currentCompanySlug}/purchase`) ||
+    pathname.startsWith(`/${currentCompanySlug}/banking`) ||
+    pathname.startsWith(`/${currentCompanySlug}/journal`) ||
+    pathname.startsWith(`/${currentCompanySlug}/credit-notes`) ||
+    pathname.startsWith(`/${currentCompanySlug}/debit-notes`)
 
   const masterNavItems: MasterNavItem[] = [
-    { label: "Account Groups",    href: `/${currentCompanyId}/masters/account-groups` },
-    { label: "Accounts",          href: `/${currentCompanyId}/masters/accounts` },
-    { label: "Voucher Types",     href: `/${currentCompanyId}/masters/voucher-types` },
-    { label: "Parties",           href: `/${currentCompanyId}/masters/parties` },
-    { label: "Items",             href: `/${currentCompanyId}/masters/items` },
-    { label: "Units of Measure",  href: `/${currentCompanyId}/masters/units` },
-    { label: "Locations",         href: `/${currentCompanyId}/masters/locations` },
+    { label: "Account Groups",    href: `/${currentCompanySlug}/masters/account-groups` },
+    { label: "Accounts",          href: `/${currentCompanySlug}/masters/accounts` },
+    { label: "Voucher Types",     href: `/${currentCompanySlug}/masters/voucher-types` },
+    { label: "Parties",           href: `/${currentCompanySlug}/masters/parties` },
+    { label: "Items",             href: `/${currentCompanySlug}/masters/items` },
+    { label: "Units of Measure",  href: `/${currentCompanySlug}/masters/units` },
+    { label: "Locations",         href: `/${currentCompanySlug}/masters/locations` },
   ]
 
   const reportNavItems: NavItem[] = [
-    { label: "Chart of Accounts", href: `/${currentCompanyId}/accounts`, icon: Book01Icon },
-    { label: "Parties",           href: `/${currentCompanyId}/parties`,  icon: User02Icon },
-    { label: "Items",             href: `/${currentCompanyId}/items`,    icon: Package01Icon },
+    { label: "Chart of Accounts", href: `/${currentCompanySlug}/accounts`, icon: Book01Icon },
+    { label: "Parties",           href: `/${currentCompanySlug}/parties`,  icon: User02Icon },
+    { label: "Items",             href: `/${currentCompanySlug}/items`,    icon: Package01Icon },
   ]
 
   const secondaryNavItems: NavItem[] = [
-    { label: "Settings", href: `/${currentCompanyId}/settings`, icon: Settings01Icon },
+    { label: "Settings", href: `/${currentCompanySlug}/settings`, icon: Settings01Icon },
   ]
 
-  const isMastersActive = pathname.startsWith(`/${currentCompanyId}/masters`)
+  const isMastersActive = pathname.startsWith(`/${currentCompanySlug}/masters`)
 
   function handleCompanyChange(e: React.ChangeEvent<HTMLSelectElement>) {
     if (e.target.value) router.push(`/${e.target.value}`)
@@ -136,7 +137,7 @@ export function DashboardShell({
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton size="lg" asChild>
-                <Link href={`/${currentCompanyId}`}>
+                <Link href={`/${currentCompanySlug}`}>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-sm">
                     T
                   </div>
@@ -156,11 +157,11 @@ export function DashboardShell({
             <div className="px-2 pb-1">
               <select
                 className="w-full rounded-md border bg-sidebar px-2 py-1.5 text-xs text-sidebar-foreground focus:outline-none"
-                value={currentCompanyId}
+                value={currentCompanySlug}
                 onChange={handleCompanyChange}
               >
                 {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c.id} value={c.slug}>
                     {c.displayName || c.name}
                   </option>
                 ))}

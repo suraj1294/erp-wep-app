@@ -15,10 +15,10 @@ export default async function DashboardLayout({
   }
 
   // If the user has no companies, send them to create one.
-  // This only applies at the (dashboard) group level — the [companyId] nested
+  // This only applies at the (dashboard) group level — the [companySlug] nested
   // layout handles its own sidebar data fetching.
   const membership = await db
-    .select({ companyId: companyUsers.companyId })
+    .select({ companySlug: companies.slug })
     .from(companyUsers)
     .innerJoin(companies, eq(companyUsers.companyId, companies.id))
     .where(

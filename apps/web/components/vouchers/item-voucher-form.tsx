@@ -21,7 +21,7 @@ import {
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
 import type { ItemOption } from "./item-combobox"
-import { createVoucher } from "@/app/(dashboard)/[companyId]/vouchers/actions"
+import { createVoucher } from "@/app/(dashboard)/[companySlug]/vouchers/actions"
 
 export interface VoucherTypeOption {
   id: string

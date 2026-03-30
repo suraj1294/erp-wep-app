@@ -45,6 +45,7 @@ const {
 const { seedCompanyDefaults } = await import(
   "@workspace/db/seeds/company-defaults"
 )
+const { createCompanyRecord } = await import("@/lib/company-slug")
 
 /**
  * Masters CRUD tests.
@@ -77,6 +78,7 @@ const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
 const FIXTURE_COMPANY_NAME = `Masters E2E ${Date.now()}`
 
 let companyId = ""
+let companySlug = ""
 
 async function createFixtureCompany() {
   const [owner] = await db
@@ -88,14 +90,11 @@ async function createFixtureCompany() {
     throw new Error(`E2E user not found for ${E2E_EMAIL}`)
   }
 
-  const [company] = await db
-    .insert(companies)
-    .values({
-      name: FIXTURE_COMPANY_NAME,
-      displayName: FIXTURE_COMPANY_NAME,
-      createdBy: owner.id,
-    })
-    .returning({ id: companies.id })
+  const company = await createCompanyRecord({
+    name: FIXTURE_COMPANY_NAME,
+    displayName: FIXTURE_COMPANY_NAME,
+    createdBy: owner.id,
+  })
 
   if (!company) {
     throw new Error("Failed to create masters fixture company")
@@ -109,7 +108,7 @@ async function createFixtureCompany() {
 
   await seedCompanyDefaults(company.id)
 
-  return company.id
+  return company
 }
 
 async function deleteFixtureCompany(targetCompanyId: string) {
@@ -134,11 +133,11 @@ async function deleteFixtureCompany(targetCompanyId: string) {
 
 /** Navigate to the fixture company dashboard. */
 async function gotoCompanyDashboard(page: Page): Promise<string> {
-  await page.goto(`/${companyId}`)
-  await page.waitForURL((url) => url.pathname === `/${companyId}`, {
+  await page.goto(`/${companySlug}`)
+  await page.waitForURL((url) => url.pathname === `/${companySlug}`, {
     timeout: 45_000,
   })
-  return companyId
+  return companySlug
 }
 
 /** Ensure the sidebar is expanded (desktop layout). */
@@ -163,12 +162,14 @@ async function expandMasters(page: Page) {
 }
 
 /** Navigate directly to a master page by path segment. */
-async function gotoMaster(page: Page, companyId: string, segment: string) {
-  await page.goto(`/${companyId}/masters/${segment}`)
+async function gotoMaster(page: Page, companySlug: string, segment: string) {
+  await page.goto(`/${companySlug}/masters/${segment}`)
 }
 
 test.beforeAll(async () => {
-  companyId = await createFixtureCompany()
+  const company = await createFixtureCompany()
+  companyId = company.id
+  companySlug = company.slug
 })
 
 test.afterAll(async () => {
@@ -229,7 +230,7 @@ function dialogNameInput(page: Page) {
 
 test.describe("Masters — Account Groups", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "account-groups")
+    await gotoMaster(page, companySlug, "account-groups")
     await expect(
       page.getByRole("heading", { name: "Account Groups" })
     ).toBeVisible({ timeout: 30_000 })
@@ -323,7 +324,7 @@ test.describe("Masters — Account Groups", () => {
 
 test.describe("Masters — Accounts", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "accounts")
+    await gotoMaster(page, companySlug, "accounts")
     await expect(
       page.getByRole("heading", { name: "Accounts" })
     ).toBeVisible({ timeout: 30_000 })
@@ -400,7 +401,7 @@ test.describe("Masters — Accounts", () => {
 
 test.describe("Masters — Voucher Types", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "voucher-types")
+    await gotoMaster(page, companySlug, "voucher-types")
     await expect(
       page.getByRole("heading", { name: "Voucher Types" })
     ).toBeVisible({ timeout: 30_000 })
@@ -533,7 +534,7 @@ test.describe("Masters — Voucher Types", () => {
 
 test.describe("Masters — Parties", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "parties")
+    await gotoMaster(page, companySlug, "parties")
     await expect(
       page.getByRole("heading", { name: "Parties" })
     ).toBeVisible({ timeout: 30_000 })
@@ -630,7 +631,7 @@ test.describe("Masters — Parties", () => {
 
 test.describe("Masters — Items", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "items")
+    await gotoMaster(page, companySlug, "items")
     await expect(
       page.getByRole("heading", { name: "Items" })
     ).toBeVisible({ timeout: 30_000 })
@@ -709,7 +710,7 @@ test.describe("Masters — Items", () => {
 
 test.describe("Masters — Units of Measure", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "units")
+    await gotoMaster(page, companySlug, "units")
     await expect(
       page.getByRole("heading", { name: "Units of Measure" })
     ).toBeVisible({ timeout: 30_000 })
@@ -810,7 +811,7 @@ test.describe("Masters — Units of Measure", () => {
 
 test.describe("Masters — Locations", () => {
   test.beforeEach(async ({ page }) => {
-    await gotoMaster(page, companyId, "locations")
+    await gotoMaster(page, companySlug, "locations")
     await expect(
       page.getByRole("heading", { name: "Locations" })
     ).toBeVisible({ timeout: 30_000 })
@@ -900,7 +901,7 @@ test.describe("Masters — Locations", () => {
 // ---------------------------------------------------------------------------
 
 test.describe("Masters sidebar navigation", () => {
-  test("all 7 master links are present and scoped to the current companyId", async ({
+  test("all 7 master links are present and scoped to the current company slug", async ({
     page,
   }) => {
     await gotoCompanyDashboard(page)
@@ -920,7 +921,7 @@ test.describe("Masters sidebar navigation", () => {
       await expect(
         // Use exact: true so "Accounts" doesn't also match "Chart of Accounts"
         page.locator('[data-sidebar="menu-sub"]').getByRole("link", { name: label, exact: true })
-      ).toHaveAttribute("href", `/${companyId}/masters/${segment}`)
+      ).toHaveAttribute("href", `/${companySlug}/masters/${segment}`)
     }
   })
 

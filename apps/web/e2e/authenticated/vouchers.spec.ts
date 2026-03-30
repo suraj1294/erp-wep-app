@@ -45,6 +45,7 @@ const {
 const { seedCompanyDefaults } = await import(
   "@workspace/db/seeds/company-defaults"
 )
+const { createCompanyRecord } = await import("@/lib/company-slug")
 
 const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
 
@@ -58,7 +59,7 @@ const FIXTURE_NAMES = {
   item: `E2E Widget ${Date.now()}`,
 }
 
-async function createVoucherFixtureCompany(): Promise<string> {
+async function createVoucherFixtureCompany() {
   const [owner] = await db
     .select({ id: user.id })
     .from(user)
@@ -68,14 +69,11 @@ async function createVoucherFixtureCompany(): Promise<string> {
     throw new Error(`E2E user not found for ${E2E_EMAIL}`)
   }
 
-  const [company] = await db
-    .insert(companies)
-    .values({
-      name: FIXTURE_NAMES.company,
-      displayName: FIXTURE_NAMES.company,
-      createdBy: owner.id,
-    })
-    .returning({ id: companies.id })
+  const company = await createCompanyRecord({
+    name: FIXTURE_NAMES.company,
+    displayName: FIXTURE_NAMES.company,
+    createdBy: owner.id,
+  })
 
   if (!company) {
     throw new Error("Failed to create voucher test company")
@@ -178,7 +176,7 @@ async function createVoucherFixtureCompany(): Promise<string> {
     currentStock: "10.000",
   })
 
-  return company.id
+  return company
 }
 
 async function deleteCompany(companyId: string) {
@@ -247,9 +245,12 @@ async function expectVoucherCreated(
 
 test.describe("Voucher create flows", () => {
   let companyId: string
+  let companySlug: string
 
   test.beforeAll(async () => {
-    companyId = await createVoucherFixtureCompany()
+    const company = await createVoucherFixtureCompany()
+    companyId = company.id
+    companySlug = company.slug
   })
 
   test.afterAll(async () => {
@@ -259,55 +260,55 @@ test.describe("Voucher create flows", () => {
   })
 
   test("creates a sales invoice", async ({ page }) => {
-    await page.goto(`/${companyId}/sales/new`)
+    await page.goto(`/${companySlug}/sales/new`)
     await expect(page.getByRole("heading", { name: "New Sales Invoice" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
     await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.customerParty)
     await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
 
-    await saveVoucher(page, `/${companyId}/sales`)
+    await saveVoucher(page, `/${companySlug}/sales`)
     await expectVoucherCreated(page, "INV-0001", FIXTURE_NAMES.customerParty)
   })
 
   test("creates a purchase bill", async ({ page }) => {
-    await page.goto(`/${companyId}/purchase/new`)
+    await page.goto(`/${companySlug}/purchase/new`)
     await expect(page.getByRole("heading", { name: "New Purchase Bill" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
     await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.supplierParty)
     await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
 
-    await saveVoucher(page, `/${companyId}/purchase`)
+    await saveVoucher(page, `/${companySlug}/purchase`)
     await expectVoucherCreated(page, "BILL-0001", FIXTURE_NAMES.supplierParty)
   })
 
   test("creates a credit note", async ({ page }) => {
-    await page.goto(`/${companyId}/credit-notes/new`)
+    await page.goto(`/${companySlug}/credit-notes/new`)
     await expect(page.getByRole("heading", { name: "New Credit Note" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
     await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.customerParty)
     await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
 
-    await saveVoucher(page, `/${companyId}/credit-notes`)
+    await saveVoucher(page, `/${companySlug}/credit-notes`)
     await expectVoucherCreated(page, "CN-0001", FIXTURE_NAMES.customerParty)
   })
 
   test("creates a debit note", async ({ page }) => {
-    await page.goto(`/${companyId}/debit-notes/new`)
+    await page.goto(`/${companySlug}/debit-notes/new`)
     await expect(page.getByRole("heading", { name: "New Debit Note" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
     await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.supplierParty)
     await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
 
-    await saveVoucher(page, `/${companyId}/debit-notes`)
+    await saveVoucher(page, `/${companySlug}/debit-notes`)
     await expectVoucherCreated(page, "DN-0001", FIXTURE_NAMES.supplierParty)
   })
 
   test("creates a payment voucher", async ({ page }) => {
-    await page.goto(`/${companyId}/banking/payment/new`)
+    await page.goto(`/${companySlug}/banking/payment/new`)
     await expect(page.getByRole("heading", { name: "New Payment" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
@@ -315,12 +316,12 @@ test.describe("Voucher create flows", () => {
     await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.supplierAccount)
     await formArea(page).locator('input[type="number"]').first().fill("50")
 
-    await saveVoucher(page, `/${companyId}/banking`)
+    await saveVoucher(page, `/${companySlug}/banking`)
     await expectVoucherCreated(page, "PMT-0001")
   })
 
   test("creates a receipt voucher", async ({ page }) => {
-    await page.goto(`/${companyId}/banking/receipt/new`)
+    await page.goto(`/${companySlug}/banking/receipt/new`)
     await expect(page.getByRole("heading", { name: "New Receipt" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
@@ -328,12 +329,12 @@ test.describe("Voucher create flows", () => {
     await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.customerAccount)
     await formArea(page).locator('input[type="number"]').first().fill("60")
 
-    await saveVoucher(page, `/${companyId}/banking`)
+    await saveVoucher(page, `/${companySlug}/banking`)
     await expectVoucherCreated(page, "RCT-0001")
   })
 
   test("creates a contra voucher", async ({ page }) => {
-    await page.goto(`/${companyId}/banking/contra/new`)
+    await page.goto(`/${companySlug}/banking/contra/new`)
     await expect(page.getByRole("heading", { name: "New Contra Entry" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
@@ -344,12 +345,12 @@ test.describe("Voucher create flows", () => {
     await nums.nth(0).fill("100")
     await nums.nth(3).fill("100")
 
-    await saveVoucher(page, `/${companyId}/banking`)
+    await saveVoucher(page, `/${companySlug}/banking`)
     await expectVoucherCreated(page, "CON-0001")
   })
 
   test("creates a journal voucher", async ({ page }) => {
-    await page.goto(`/${companyId}/journal/new`)
+    await page.goto(`/${companySlug}/journal/new`)
     await expect(page.getByRole("heading", { name: "New Journal Entry" })).toBeVisible()
 
     const combos = voucherComboboxes(page)
@@ -361,7 +362,7 @@ test.describe("Voucher create flows", () => {
     await nums.nth(0).fill("75")
     await nums.nth(3).fill("75")
 
-    await saveVoucher(page, `/${companyId}/journal`)
+    await saveVoucher(page, `/${companySlug}/journal`)
     await expectVoucherCreated(page, "JNL-0001")
   })
 })

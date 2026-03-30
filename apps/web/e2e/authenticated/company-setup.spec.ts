@@ -12,7 +12,8 @@ import { test, expect, type Page } from "@playwright/test"
  * keeps each run's company name unique.
  */
 
-const UUID_PATH = /^\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
+const AUTH_STORAGE_STATE = "e2e/.auth/user.json"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -23,11 +24,20 @@ async function createCompany(page: Page, name: string): Promise<string> {
   await page.goto("/create-company")
   await expect(page.getByText("Create Your Company").first()).toBeVisible()
 
-  await page.fill('input[name="name"]', name)
-  await page.click('button[type="submit"]')
+  await page.getByPlaceholder("Acme Corporation", { exact: true }).fill(name)
+  await page.getByRole("button", { name: "Next", exact: true }).click()
+  await expect(page.getByText("Parties").last()).toBeVisible()
+  await page.getByRole("button", { name: "Skip", exact: true }).click()
+  await expect(page.getByText("Items").last()).toBeVisible()
+  await page.getByRole("button", { name: "Skip", exact: true }).click()
+  await expect(page.getByText("Locations").last()).toBeVisible()
+  await page.getByRole("button", { name: "Create Company", exact: true }).click()
 
-  // Wait for the redirect to /{newCompanyId}
-  await page.waitForURL((url) => UUID_PATH.test(url.pathname), { timeout: 45_000 })
+  // Wait for the redirect to /{newCompanySlug}
+  await page.waitForURL(
+    (url) => url.pathname !== "/create-company" && COMPANY_PATH.test(url.pathname),
+    { timeout: 45_000 }
+  )
 
   return new URL(page.url()).pathname.split("/")[1]!
 }
@@ -37,15 +47,16 @@ async function createCompany(page: Page, name: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 test.describe("Company creation + seeded masters", () => {
-  let companyId: string
+  let companySlug: string
 
   test.beforeAll(async ({ browser }) => {
     // Create one company for all tests in this describe block.
     // Uses a timestamp suffix so each CI run gets a unique name.
-    const page = await browser.newPage()
+    const context = await browser.newContext({ storageState: AUTH_STORAGE_STATE })
+    const page = await context.newPage()
     const name = `Seed Test Co ${Date.now()}`
-    companyId = await createCompany(page, name)
-    await page.close()
+    companySlug = await createCompany(page, name)
+    await context.close()
   })
 
   // -------------------------------------------------------------------------
@@ -56,15 +67,16 @@ test.describe("Company creation + seeded masters", () => {
     let page: Page
 
     test.beforeEach(async ({ browser }) => {
-      page = await browser.newPage()
-      await page.goto(`/${companyId}/accounts`)
+      const context = await browser.newContext({ storageState: AUTH_STORAGE_STATE })
+      page = await context.newPage()
+      await page.goto(`/${companySlug}/accounts`)
       await expect(
         page.getByRole("heading", { name: "Chart of Accounts" })
       ).toBeVisible({ timeout: 30_000 })
     })
 
     test.afterEach(async () => {
-      await page.close()
+      await page.context().close()
     })
 
     test("all 8 primary account groups are present", async () => {

@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { db } from "@workspace/db/client"
-import { companies, companyUsers } from "@workspace/db/schema"
+import { companyUsers } from "@workspace/db/schema"
 import { requireSession } from "@/lib/auth-server"
+import { createCompanyRecord } from "@/lib/company-slug"
 
 export async function POST(request: Request) {
   try {
@@ -16,16 +17,11 @@ export async function POST(request: Request) {
       )
     }
 
-    const result = await db
-      .insert(companies)
-      .values({
-        name: name.trim(),
-        displayName: displayName?.trim() || null,
-        createdBy: session.user.id,
-      })
-      .returning()
-
-    const company = result[0]!
+    const company = await createCompanyRecord({
+      name,
+      displayName,
+      createdBy: session.user.id,
+    })
 
     await db.insert(companyUsers).values({
       companyId: company.id,

@@ -13,7 +13,7 @@ export default async function AppPage() {
   }
 
   const [first] = await db
-    .select({ companyId: companyUsers.companyId })
+    .select({ companySlug: companies.slug })
     .from(companyUsers)
     .innerJoin(companies, eq(companyUsers.companyId, companies.id))
     .where(
@@ -29,5 +29,5 @@ export default async function AppPage() {
     redirect("/create-company")
   }
 
-  redirect(`/${first.companyId}`)
+  redirect(`/${first.companySlug}`)
 }
