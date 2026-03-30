@@ -63,9 +63,6 @@ importers:
         specifier: ^4.5.2
         version: 4.8.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
-      '@playwright/test':
-        specifier: ^1.58.2
-        version: 1.58.2
       '@tailwindcss/postcss':
         specifier: ^4.1.18
         version: 4.1.18
@@ -90,6 +87,22 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  apps/web-e2e:
+    dependencies:
+      '@workspace/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: ^0.44.2
+        version: 0.44.7(@opentelemetry/api@1.9.1)(kysely@0.28.14)(postgres@3.4.8)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.58.2
+        version: 1.58.2
+      '@types/node':
+        specifier: ^25.1.0
+        version: 25.2.3
 
   packages/db:
     dependencies:

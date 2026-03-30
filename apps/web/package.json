@@ -10,9 +10,9 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui",
-    "e2e:report": "playwright show-report"
+    "e2e": "pnpm -C ../web-e2e e2e",
+    "e2e:ui": "pnpm -C ../web-e2e e2e:ui",
+    "e2e:report": "pnpm -C ../web-e2e e2e:report"
   },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.0.0",
@@ -28,7 +28,6 @@
     "resend": "^4.5.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "^25.1.0",
     "@types/react": "^19.2.10",

@@ -1,0 +1,103 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e5]:
+      - list [ref=e7]:
+        - listitem [ref=e8]:
+          - link "T Tally ERP Acme Corp" [ref=e9] [cursor=pointer]:
+            - /url: /acme-corp
+            - generic [ref=e10]: T
+            - generic [ref=e11]:
+              - generic [ref=e12]: Tally ERP
+              - generic [ref=e13]: Acme Corp
+      - generic [ref=e14]:
+        - generic [ref=e15]:
+          - generic [ref=e16]: Main
+          - list [ref=e17]:
+            - listitem [ref=e18]:
+              - link "Dashboard" [ref=e19] [cursor=pointer]:
+                - /url: /acme-corp
+                - img [ref=e20]
+                - generic [ref=e25]: Dashboard
+        - generic [ref=e26]:
+          - generic [ref=e27]: Transactions
+          - list [ref=e28]:
+            - listitem [ref=e29]:
+              - button "Transactions" [ref=e31]:
+                - img [ref=e32]
+                - generic [ref=e37]: Transactions
+                - img [ref=e38]
+        - generic [ref=e40]:
+          - generic [ref=e41]: Masters
+          - list [ref=e42]:
+            - listitem [ref=e43]:
+              - button "Masters" [ref=e45]:
+                - img [ref=e46]
+                - generic [ref=e50]: Masters
+                - img [ref=e51]
+        - generic [ref=e53]:
+          - generic [ref=e54]: Reports
+          - list [ref=e55]:
+            - listitem [ref=e56]:
+              - link "Chart of Accounts" [ref=e57] [cursor=pointer]:
+                - /url: /acme-corp/accounts
+                - img [ref=e58]
+                - generic [ref=e61]: Chart of Accounts
+            - listitem [ref=e62]:
+              - link "Parties" [ref=e63] [cursor=pointer]:
+                - /url: /acme-corp/parties
+                - img [ref=e64]
+                - generic [ref=e67]: Parties
+            - listitem [ref=e68]:
+              - link "Items" [ref=e69] [cursor=pointer]:
+                - /url: /acme-corp/items
+                - img [ref=e70]
+                - generic [ref=e73]: Items
+        - generic [ref=e74]:
+          - generic [ref=e75]: Manage
+          - list [ref=e76]:
+            - listitem [ref=e77]:
+              - link "Settings" [ref=e78] [cursor=pointer]:
+                - /url: /acme-corp/settings
+                - img [ref=e79]
+                - generic [ref=e82]: Settings
+      - list [ref=e84]:
+        - listitem [ref=e85]:
+          - generic [ref=e86]:
+            - paragraph [ref=e87]: Suraj Patil
+            - paragraph [ref=e88]: suraz.patil@gmail.com
+            - paragraph [ref=e89]: owner
+        - listitem [ref=e90]:
+          - button "Sign out" [ref=e91]:
+            - img [ref=e92]
+            - generic [ref=e95]: Sign out
+      - button "Toggle Sidebar" [ref=e96]
+    - main [ref=e97]:
+      - generic [ref=e98]:
+        - button "Toggle Sidebar" [ref=e99]:
+          - img
+          - generic [ref=e100]: Toggle Sidebar
+        - generic [ref=e101]: Acme Corp
+      - generic [ref=e103]:
+        - heading "Company Dashboard" [level=1] [ref=e104]
+        - paragraph [ref=e105]: Welcome! Your role is owner.
+        - generic [ref=e106]:
+          - generic [ref=e107]:
+            - paragraph [ref=e108]: Accounts
+            - paragraph [ref=e109]: "--"
+          - generic [ref=e110]:
+            - paragraph [ref=e111]: Vouchers
+            - paragraph [ref=e112]: "--"
+          - generic [ref=e113]:
+            - paragraph [ref=e114]: Parties
+            - paragraph [ref=e115]: "--"
+          - generic [ref=e116]:
+            - paragraph [ref=e117]: Items
+            - paragraph [ref=e118]: "--"
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e124] [cursor=pointer]:
+    - img [ref=e125]
+  - alert [ref=e128]
+```

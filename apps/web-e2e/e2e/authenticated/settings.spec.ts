@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 
-const envFilePath = resolve(process.cwd(), ".env.local")
+const envFilePath = resolve(process.cwd(), "../web/.env.local")
 for (const line of readFileSync(envFilePath, "utf8").split("\n")) {
   const trimmed = line.trim()
   if (!trimmed || trimmed.startsWith("#")) {
