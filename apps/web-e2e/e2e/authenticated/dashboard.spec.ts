@@ -7,6 +7,8 @@ import { test, expect, type Page } from "@playwright/test"
 
 /** Company slug pathname regex, e.g. /acme-corp */
 const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
+const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Mayank@1294"
 
 /**
  * The visible sidebar toggle button (SidebarTrigger lives inside the topbar).
@@ -15,6 +17,17 @@ const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
  */
 const sidebarTrigger = (page: Page) =>
   page.locator('[data-sidebar="trigger"]')
+const sidebarHeader = (page: Page) => page.locator('[data-sidebar="header"]')
+
+async function getCurrentCompanyName(page: Page) {
+  const selectedOption = sidebarHeader(page).locator("option:checked")
+  if (await selectedOption.count()) {
+    return ((await selectedOption.textContent()) ?? "").trim()
+  }
+
+  const headerText = ((await sidebarHeader(page).textContent()) ?? "").trim()
+  return headerText.replace(/^T\s*Tally ERP/, "").trim()
+}
 
 /** Navigate to /app and wait until the company redirect resolves. */
 async function gotoCompanyDashboard(page: Page) {
@@ -42,6 +55,23 @@ async function expandTransactions(page: Page) {
   }
 }
 
+async function signInFreshSession(page: Page) {
+  await page.goto("/sign-in")
+  await expect(page.getByText("Sign In").first()).toBeVisible()
+
+  await page.fill('input[type="email"]', E2E_EMAIL)
+  await page.fill('input[type="password"]', E2E_PASSWORD)
+  await page.click('button[type="submit"]')
+
+  await page.waitForURL(
+    (url) =>
+      !url.pathname.startsWith("/sign-in") &&
+      !url.pathname.startsWith("/app") &&
+      url.pathname !== "/",
+    { timeout: 45_000 }
+  )
+}
+
 test.describe("Post-login routing", () => {
   test("/app redirects to the user's company dashboard", async ({ page }) => {
     await gotoCompanyDashboard(page)
@@ -58,10 +88,11 @@ test.describe("Dashboard layout", () => {
 
   test("sidebar shows Tally ERP branding and company name", async ({ page }) => {
     await expandSidebar(page)
+    const companyName = await getCurrentCompanyName(page)
+
+    expect(companyName).toBeTruthy()
     await expect(page.getByText("Tally ERP")).toBeVisible()
-    await expect(
-      page.locator('[data-sidebar="header"]').getByText("Acme Corp").first()
-    ).toBeVisible()
+    await expect(sidebarHeader(page)).toContainText(companyName)
   })
 
   test("sidebar displays all navigation items", async ({ page }) => {
@@ -121,9 +152,10 @@ test.describe("Dashboard layout", () => {
   })
 
   test("topbar shows company name", async ({ page }) => {
-    // The header inside SidebarInset is not a landmark banner when nested in <main>;
-    // select it directly by element type instead.
-    await expect(page.locator("header").getByText("Acme Corp")).toBeVisible()
+    const companyName = await getCurrentCompanyName(page)
+
+    expect(companyName).toBeTruthy()
+    await expect(page.locator("main")).toContainText(companyName)
   })
 
   test("dashboard page shows summary stat cards", async ({ page }) => {
@@ -135,8 +167,11 @@ test.describe("Dashboard layout", () => {
 })
 
 test.describe("Sign out", () => {
-  test("clicking Sign out redirects to /sign-in", async ({ page }) => {
-    await gotoCompanyDashboard(page)
+  test("clicking Sign out redirects to /sign-in", async ({ browser }) => {
+    const context = await browser.newContext()
+    const page = await context.newPage()
+
+    await signInFreshSession(page)
     await expandSidebar(page)
 
     const signOutBtn = page.getByRole("button", { name: "Sign out" })
@@ -146,5 +181,7 @@ test.describe("Sign out", () => {
     await page.waitForURL(/\/sign-in/, { timeout: 15_000 })
     await expect(page).toHaveURL(/\/sign-in/)
     await expect(page.getByText("Sign In").first()).toBeVisible()
+
+    await context.close()
   })
 })

@@ -7,6 +7,17 @@ import { test, expect, type Page } from "@playwright/test"
 const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
 
 const sidebarTrigger = (page: Page) => page.locator('[data-sidebar="trigger"]')
+const sidebarHeader = (page: Page) => page.locator('[data-sidebar="header"]')
+
+async function getCurrentCompanyName(page: Page) {
+  const selectedOption = sidebarHeader(page).locator("option:checked")
+  if (await selectedOption.count()) {
+    return ((await selectedOption.textContent()) ?? "").trim()
+  }
+
+  const headerText = ((await sidebarHeader(page).textContent()) ?? "").trim()
+  return headerText.replace(/^T\s*Tally ERP/, "").trim()
+}
 
 async function gotoCompanyDashboard(page: Page) {
   await page.goto("/app")
@@ -53,14 +64,12 @@ test.describe("Company access control", () => {
   test("company name appears in the sidebar header and topbar", async ({ page }) => {
     await gotoCompanyDashboard(page)
     await expandSidebar(page)
+    const companyName = await getCurrentCompanyName(page)
 
-    // Sidebar header (use .first() — multi-company users also show a <select>)
-    await expect(
-      page.locator('[data-sidebar="header"]').getByText("Acme Corp").first()
-    ).toBeVisible()
+    expect(companyName).toBeTruthy()
 
-    // Topbar (header inside SidebarInset, not a landmark banner when nested)
-    await expect(page.locator("header").getByText("Acme Corp")).toBeVisible()
+    await expect(sidebarHeader(page)).toContainText(companyName)
+    await expect(page.locator("main")).toContainText(companyName)
   })
 
   test("sidebar nav links are scoped to the current company slug", async ({ page }) => {

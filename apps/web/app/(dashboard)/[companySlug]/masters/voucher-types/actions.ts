@@ -1,9 +1,7 @@
 "use server"
 
-import { eq, and } from "drizzle-orm"
+import { createVoucherType as createVoucherTypeRecord, deleteVoucherType as deleteVoucherTypeRecord, updateVoucherType as updateVoucherTypeRecord } from "@workspace/db"
 import { revalidatePath } from "next/cache"
-import { db } from "@workspace/db/client"
-import { voucherTypes } from "@workspace/db/schema"
 import { requireCompanyAccess } from "@/lib/company-access"
 
 interface VoucherTypeData {
@@ -20,15 +18,7 @@ export async function createVoucherType(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db.insert(voucherTypes).values({
-    companyId: company.id,
-    name: data.name,
-    code: data.code,
-    voucherClass: data.voucherClass,
-    prefix: data.prefix ?? null,
-    startingNumber: data.startingNumber ?? 1,
-    currentNumber: data.startingNumber ?? 1,
-  })
+  await createVoucherTypeRecord(company.id, data)
 
   revalidatePath(`/${company.slug}/masters/voucher-types`)
 }
@@ -40,16 +30,7 @@ export async function updateVoucherType(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .update(voucherTypes)
-    .set({
-      name: data.name,
-      code: data.code,
-      voucherClass: data.voucherClass,
-      prefix: data.prefix ?? null,
-      startingNumber: data.startingNumber ?? 1,
-    })
-    .where(and(eq(voucherTypes.id, id), eq(voucherTypes.companyId, company.id)))
+  await updateVoucherTypeRecord(company.id, id, data)
 
   revalidatePath(`/${company.slug}/masters/voucher-types`)
 }
@@ -57,9 +38,7 @@ export async function updateVoucherType(
 export async function deleteVoucherType(companySlug: string, id: string) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .delete(voucherTypes)
-    .where(and(eq(voucherTypes.id, id), eq(voucherTypes.companyId, company.id)))
+  await deleteVoucherTypeRecord(company.id, id)
 
   revalidatePath(`/${company.slug}/masters/voucher-types`)
 }

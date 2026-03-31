@@ -1,6 +1,4 @@
-import { eq, asc } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { items, unitsOfMeasure } from "@workspace/db/schema"
+import { listItems, listUnitOptions } from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { ItemsClient } from "./items-client"
 
@@ -13,20 +11,8 @@ export default async function ItemsPage({ params }: PageProps) {
   const { company } = await requireCompanyAccess(companySlug)
 
   const [itemsList, unitsList] = await Promise.all([
-    db
-      .select()
-      .from(items)
-      .where(eq(items.companyId, company.id))
-      .orderBy(asc(items.name)),
-    db
-      .select({
-        id: unitsOfMeasure.id,
-        name: unitsOfMeasure.name,
-        symbol: unitsOfMeasure.symbol,
-      })
-      .from(unitsOfMeasure)
-      .where(eq(unitsOfMeasure.companyId, company.id))
-      .orderBy(asc(unitsOfMeasure.name)),
+    listItems(company.id),
+    listUnitOptions(company.id),
   ])
 
   return (

@@ -1,9 +1,7 @@
 "use server"
 
-import { eq, and } from "drizzle-orm"
+import { createAccount as createAccountRecord, deleteAccount as deleteAccountRecord, updateAccount as updateAccountRecord } from "@workspace/db"
 import { revalidatePath } from "next/cache"
-import { db } from "@workspace/db/client"
-import { accounts } from "@workspace/db/schema"
 import { requireCompanyAccess } from "@/lib/company-access"
 
 interface AccountData {
@@ -17,14 +15,7 @@ interface AccountData {
 export async function createAccount(companySlug: string, data: AccountData) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db.insert(accounts).values({
-    companyId: company.id,
-    name: data.name,
-    code: data.code ?? null,
-    description: data.description ?? null,
-    groupId: data.groupId ?? null,
-    openingBalance: data.openingBalance ?? "0",
-  })
+  await createAccountRecord(company.id, data)
 
   revalidatePath(`/${company.slug}/masters/accounts`)
 }
@@ -36,16 +27,7 @@ export async function updateAccount(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .update(accounts)
-    .set({
-      name: data.name,
-      code: data.code ?? null,
-      description: data.description ?? null,
-      groupId: data.groupId ?? null,
-      openingBalance: data.openingBalance ?? "0",
-    })
-    .where(and(eq(accounts.id, id), eq(accounts.companyId, company.id)))
+  await updateAccountRecord(company.id, id, data)
 
   revalidatePath(`/${company.slug}/masters/accounts`)
 }
@@ -53,9 +35,7 @@ export async function updateAccount(
 export async function deleteAccount(companySlug: string, id: string) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .delete(accounts)
-    .where(and(eq(accounts.id, id), eq(accounts.companyId, company.id)))
+  await deleteAccountRecord(company.id, id)
 
   revalidatePath(`/${company.slug}/masters/accounts`)
 }

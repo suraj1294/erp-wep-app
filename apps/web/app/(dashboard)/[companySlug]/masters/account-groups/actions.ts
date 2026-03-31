@@ -1,9 +1,7 @@
 "use server"
 
-import { eq, and } from "drizzle-orm"
+import { createAccountGroup as createAccountGroupRecord, deleteAccountGroup as deleteAccountGroupRecord, updateAccountGroup as updateAccountGroupRecord } from "@workspace/db"
 import { revalidatePath } from "next/cache"
-import { db } from "@workspace/db/client"
-import { accountGroups } from "@workspace/db/schema"
 import { requireCompanyAccess } from "@/lib/company-access"
 
 interface AccountGroupData {
@@ -20,14 +18,7 @@ export async function createAccountGroup(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db.insert(accountGroups).values({
-    companyId: company.id,
-    name: data.name,
-    code: data.code ?? null,
-    accountType: data.accountType,
-    nature: data.nature,
-    parentId: data.parentId ?? null,
-  })
+  await createAccountGroupRecord(company.id, data)
 
   revalidatePath(`/${company.slug}/masters/account-groups`)
 }
@@ -39,17 +30,7 @@ export async function updateAccountGroup(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .update(accountGroups)
-    .set({
-      name: data.name,
-      code: data.code ?? null,
-      accountType: data.accountType,
-      nature: data.nature,
-      // Prevent circular reference: skip parentId if it equals own id
-      ...(data.parentId !== id ? { parentId: data.parentId ?? null } : {}),
-    })
-    .where(and(eq(accountGroups.id, id), eq(accountGroups.companyId, company.id)))
+  await updateAccountGroupRecord(company.id, id, data)
 
   revalidatePath(`/${company.slug}/masters/account-groups`)
 }
@@ -57,9 +38,7 @@ export async function updateAccountGroup(
 export async function deleteAccountGroup(companySlug: string, id: string) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .delete(accountGroups)
-    .where(and(eq(accountGroups.id, id), eq(accountGroups.companyId, company.id)))
+  await deleteAccountGroupRecord(company.id, id)
 
   revalidatePath(`/${company.slug}/masters/account-groups`)
 }

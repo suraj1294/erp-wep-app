@@ -1,6 +1,4 @@
-import { eq, asc } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { voucherTypes } from "@workspace/db/schema"
+import { listVoucherTypes } from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { VoucherTypesClient } from "./voucher-types-client"
 
@@ -12,11 +10,7 @@ export default async function VoucherTypesPage({ params }: PageProps) {
   const { companySlug } = await params
   const { company } = await requireCompanyAccess(companySlug)
 
-  const voucherTypesList = await db
-    .select()
-    .from(voucherTypes)
-    .where(eq(voucherTypes.companyId, company.id))
-    .orderBy(asc(voucherTypes.name))
+  const voucherTypesList = await listVoucherTypes(company.id)
 
   return (
     <div className="p-6">

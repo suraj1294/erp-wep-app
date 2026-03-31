@@ -1,14 +1,19 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { and, eq, ne } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { companies, companyUsers } from "@workspace/db/schema"
 import { seedCompanyDefaults } from "@workspace/db/seeds/company-defaults"
 import {
+  addCompanyOwnerMembership,
+  disableCompanyAndMemberships,
+  getCompanySettingsRecord,
+  getCompanySlugById,
+  getFallbackActiveCompany,
+  getTargetCompanyMembership,
+  listActiveAccessibleCompanies,
   getSampleDataSeedProgress,
   seedSampleData,
   type SampleDataSeedProgress,
+  updateManagedCompany as updateManagedCompanyRecord,
 } from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { requireSession } from "@/lib/auth-server"
@@ -35,21 +40,7 @@ function hasMinimumRole(role: string, minimumRole: string) {
 }
 
 async function getTargetMembership(userId: string, targetCompanyId: string) {
-  const [membership] = await db
-    .select({
-      role: companyUsers.role,
-      membershipActive: companyUsers.isActive,
-      companyActive: companies.isActive,
-    })
-    .from(companyUsers)
-    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
-    .where(
-      and(
-        eq(companyUsers.userId, userId),
-        eq(companyUsers.companyId, targetCompanyId)
-      )
-    )
-    .limit(1)
+  const membership = await getTargetCompanyMembership(userId, targetCompanyId)
 
   if (!membership) {
     throw new Error("You do not have access to this company")
@@ -86,11 +77,7 @@ export async function createCompanyFromSettings(
     return { ok: false, message: "Failed to create company." }
   }
 
-  await db.insert(companyUsers).values({
-    companyId: company.id,
-    userId: session.user.id,
-    role: "owner",
-  })
+  await addCompanyOwnerMembership(company.id, session.user.id)
 
   await seedCompanyDefaults(company.id)
 
@@ -133,29 +120,21 @@ export async function updateManagedCompany(
     return { ok: false, message: "Company name is required." }
   }
 
-  await db
-    .update(companies)
-    .set({
-      name,
-      displayName: input.displayName?.trim() || null,
-      email: input.email?.trim() || null,
-      phone: input.phone?.trim() || null,
-      gstin: input.gstin?.trim() || null,
-      pan: input.pan?.trim() || null,
-      updatedAt: new Date(),
-    })
-    .where(eq(companies.id, targetCompanyId))
+  await updateManagedCompanyRecord(targetCompanyId, {
+    name,
+    displayName: input.displayName?.trim() || null,
+    email: input.email?.trim() || null,
+    phone: input.phone?.trim() || null,
+    gstin: input.gstin?.trim() || null,
+    pan: input.pan?.trim() || null,
+  })
 
   revalidatePath(`/${currentCompany.slug}/settings`)
   if (currentCompany.id !== targetCompanyId) {
-    const [targetCompany] = await db
-      .select({ slug: companies.slug })
-      .from(companies)
-      .where(eq(companies.id, targetCompanyId))
-      .limit(1)
+    const targetCompanySlug = await getCompanySlugById(targetCompanyId)
 
-    if (targetCompany) {
-      revalidatePath(`/${targetCompany.slug}`)
+    if (targetCompanySlug) {
+      revalidatePath(`/${targetCompanySlug}`)
     }
   }
 
@@ -182,17 +161,7 @@ export async function disableManagedCompany(
     return { ok: false, message: "This company is already disabled." }
   }
 
-  const activeCompanies = await db
-    .select({ id: companies.id })
-    .from(companyUsers)
-    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
-    .where(
-      and(
-        eq(companyUsers.userId, session.user.id),
-        eq(companyUsers.isActive, true),
-        eq(companies.isActive, true)
-      )
-    )
+  const activeCompanies = await listActiveAccessibleCompanies(session.user.id)
 
   if (activeCompanies.length <= 1) {
     return {
@@ -201,34 +170,12 @@ export async function disableManagedCompany(
     }
   }
 
-  await db.transaction(async (tx) => {
-    await tx
-      .update(companies)
-      .set({
-        isActive: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(companies.id, targetCompanyId))
+  await disableCompanyAndMemberships(targetCompanyId)
 
-    await tx
-      .update(companyUsers)
-      .set({ isActive: false })
-      .where(eq(companyUsers.companyId, targetCompanyId))
-  })
-
-  const [fallbackCompany] = await db
-    .select({ id: companies.id, slug: companies.slug })
-    .from(companyUsers)
-    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
-    .where(
-      and(
-        eq(companyUsers.userId, session.user.id),
-        eq(companyUsers.isActive, true),
-        eq(companies.isActive, true),
-        ne(companies.id, targetCompanyId)
-      )
-    )
-    .limit(1)
+  const fallbackCompany = await getFallbackActiveCompany(
+    session.user.id,
+    targetCompanyId
+  )
 
   revalidatePath(`/${currentCompany.slug}/settings`)
 
@@ -254,11 +201,7 @@ export async function seedSampleDataAction(
   }
 
   const result = await seedSampleData(company.id, session.user.id)
-  const [companyRow] = await db
-    .select({ settings: companies.settings })
-    .from(companies)
-    .where(eq(companies.id, company.id))
-    .limit(1)
+  const companyRow = await getCompanySettingsRecord(company.id)
 
   revalidatePath(`/${company.slug}`)
   revalidatePath(`/${company.slug}/settings`)

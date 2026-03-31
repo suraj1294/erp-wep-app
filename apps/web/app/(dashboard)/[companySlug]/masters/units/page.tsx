@@ -1,6 +1,4 @@
-import { eq, asc } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { unitsOfMeasure } from "@workspace/db/schema"
+import { listUnits } from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { UnitsClient } from "./units-client"
 
@@ -12,11 +10,7 @@ export default async function UnitsPage({ params }: PageProps) {
   const { companySlug } = await params
   const { company } = await requireCompanyAccess(companySlug)
 
-  const units = await db
-    .select()
-    .from(unitsOfMeasure)
-    .where(eq(unitsOfMeasure.companyId, company.id))
-    .orderBy(asc(unitsOfMeasure.name))
+  const units = await listUnits(company.id)
 
   return (
     <div className="p-6">

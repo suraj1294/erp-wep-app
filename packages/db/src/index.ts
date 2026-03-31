@@ -1,6 +1,7 @@
 export { db } from "./client"
 export type { Database } from "./client"
 export * from "./schema/index"
+export * from "./services/index"
 export { seedCompanyDefaults } from "./seeds/company-defaults"
 export { getSampleDataSeedProgress, seedSampleData } from "./seeds/sample-data"
 export type { SampleDataSeedProgress } from "./seeds/sample-data"

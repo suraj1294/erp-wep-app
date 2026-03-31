@@ -42,6 +42,16 @@ async function createCompany(page: Page, name: string): Promise<string> {
   return new URL(page.url()).pathname.split("/")[1]!
 }
 
+async function expectChartEntryVisible(page: Page, label: string) {
+  const searchInput = page.getByRole("textbox", {
+    name: "Search accounts, groups, or codes",
+  })
+
+  await searchInput.fill(label)
+  await expect(page.getByText(label).first()).toBeVisible()
+  await searchInput.fill("")
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -107,25 +117,25 @@ test.describe("Company creation + seeded masters", () => {
         "Stock-in-Hand",
       ]
       for (const sg of subGroups) {
-        await expect(page.getByText(sg).first()).toBeVisible()
+        await expectChartEntryVisible(page, sg)
       }
     })
 
     test("default accounts are present — Cash, Sales, Purchase", async () => {
-      await expect(page.getByText("Cash").first()).toBeVisible()
-      await expect(page.getByText("Sales").first()).toBeVisible()
-      await expect(page.getByText("Purchase").first()).toBeVisible()
+      await expectChartEntryVisible(page, "Cash")
+      await expectChartEntryVisible(page, "Sales")
+      await expectChartEntryVisible(page, "Purchase")
     })
 
     test("system accounts carry their codes", async () => {
-      await expect(page.getByText("CASH").first()).toBeVisible()
-      await expect(page.getByText("SALES").first()).toBeVisible()
-      await expect(page.getByText("CAPITAL").first()).toBeVisible()
+      await expectChartEntryVisible(page, "CASH")
+      await expectChartEntryVisible(page, "SALES")
+      await expectChartEntryVisible(page, "CAPITAL")
     })
 
     test("tax accounts are present — GST Input, GST Output", async () => {
-      await expect(page.getByText("GST Input Credit").first()).toBeVisible()
-      await expect(page.getByText("GST Output").first()).toBeVisible()
+      await expectChartEntryVisible(page, "GST Input Credit")
+      await expectChartEntryVisible(page, "GST Output")
     })
   })
 })

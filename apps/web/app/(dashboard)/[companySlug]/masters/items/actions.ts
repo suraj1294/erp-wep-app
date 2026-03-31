@@ -1,9 +1,7 @@
 "use server"
 
-import { eq, and } from "drizzle-orm"
+import { createItem as createItemRecord, deleteItem as deleteItemRecord, updateItem as updateItemRecord } from "@workspace/db"
 import { revalidatePath } from "next/cache"
-import { db } from "@workspace/db/client"
-import { items } from "@workspace/db/schema"
 import { requireCompanyAccess } from "@/lib/company-access"
 
 interface ItemData {
@@ -23,20 +21,7 @@ interface ItemData {
 export async function createItem(companySlug: string, data: ItemData) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db.insert(items).values({
-    companyId: company.id,
-    name: data.name,
-    code: data.code ?? null,
-    description: data.description ?? null,
-    category: data.category ?? null,
-    unitId: data.unitId ?? null,
-    itemType: data.itemType ?? "goods",
-    hsnCode: data.hsnCode ?? null,
-    taxRate: data.taxRate ?? "0",
-    purchaseRate: data.purchaseRate ?? null,
-    salesRate: data.salesRate ?? null,
-    mrp: data.mrp ?? null,
-  })
+  await createItemRecord(company.id, data)
 
   revalidatePath(`/${company.slug}/masters/items`)
 }
@@ -48,22 +33,7 @@ export async function updateItem(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .update(items)
-    .set({
-      name: data.name,
-      code: data.code ?? null,
-      description: data.description ?? null,
-      category: data.category ?? null,
-      unitId: data.unitId ?? null,
-      itemType: data.itemType ?? "goods",
-      hsnCode: data.hsnCode ?? null,
-      taxRate: data.taxRate ?? "0",
-      purchaseRate: data.purchaseRate ?? null,
-      salesRate: data.salesRate ?? null,
-      mrp: data.mrp ?? null,
-    })
-    .where(and(eq(items.id, id), eq(items.companyId, company.id)))
+  await updateItemRecord(company.id, id, data)
 
   revalidatePath(`/${company.slug}/masters/items`)
 }
@@ -71,9 +41,7 @@ export async function updateItem(
 export async function deleteItem(companySlug: string, id: string) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .delete(items)
-    .where(and(eq(items.id, id), eq(items.companyId, company.id)))
+  await deleteItemRecord(company.id, id)
 
   revalidatePath(`/${company.slug}/masters/items`)
 }

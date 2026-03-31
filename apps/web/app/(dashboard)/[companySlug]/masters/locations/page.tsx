@@ -1,6 +1,4 @@
-import { eq, asc } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { locations } from "@workspace/db/schema"
+import { listLocations } from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { LocationsClient } from "./locations-client"
 
@@ -12,11 +10,7 @@ export default async function LocationsPage({ params }: PageProps) {
   const { companySlug } = await params
   const { company } = await requireCompanyAccess(companySlug)
 
-  const locationsList = await db
-    .select()
-    .from(locations)
-    .where(eq(locations.companyId, company.id))
-    .orderBy(asc(locations.name))
+  const locationsList = await listLocations(company.id)
 
   return (
     <div className="p-6">

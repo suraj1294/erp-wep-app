@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation"
-import { and, eq } from "drizzle-orm"
+import { listActiveCompaniesForUser } from "@workspace/db"
 import { getServerSession } from "@/lib/auth-server"
-import { db } from "@workspace/db/client"
-import { companyUsers, companies } from "@workspace/db/schema"
 import { DashboardShell } from "../dashboard-shell"
 
 export default async function CompanyLayout({
@@ -18,23 +16,7 @@ export default async function CompanyLayout({
     redirect("/sign-in")
   }
 
-  const userCompanies = await db
-    .select({
-      id: companies.id,
-      slug: companies.slug,
-      name: companies.name,
-      displayName: companies.displayName,
-      role: companyUsers.role,
-    })
-    .from(companyUsers)
-    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
-    .where(
-      and(
-        eq(companyUsers.userId, session.user.id),
-        eq(companyUsers.isActive, true),
-        eq(companies.isActive, true)
-      )
-    )
+  const userCompanies = await listActiveCompaniesForUser(session.user.id)
 
   if (userCompanies.length === 0) {
     redirect("/create-company")

@@ -1,7 +1,5 @@
-import { asc, eq } from "drizzle-orm"
+import { listAccountGroups, listAccounts } from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
-import { db } from "@workspace/db/client"
-import { accountGroups, accounts } from "@workspace/db/schema"
 import { ChartOfAccountsClient } from "./chart-of-accounts-client"
 
 export default async function AccountsPage({
@@ -13,16 +11,8 @@ export default async function AccountsPage({
   const { company } = await requireCompanyAccess(companySlug)
 
   const [groups, accountsList] = await Promise.all([
-    db
-      .select()
-      .from(accountGroups)
-      .where(eq(accountGroups.companyId, company.id))
-      .orderBy(asc(accountGroups.level), asc(accountGroups.name)),
-    db
-      .select()
-      .from(accounts)
-      .where(eq(accounts.companyId, company.id))
-      .orderBy(asc(accounts.name)),
+    listAccountGroups(company.id),
+    listAccounts(company.id),
   ])
 
   return (

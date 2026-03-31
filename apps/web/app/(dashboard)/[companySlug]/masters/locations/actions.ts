@@ -1,9 +1,7 @@
 "use server"
 
-import { eq, and } from "drizzle-orm"
+import { createLocation as createLocationRecord, deleteLocation as deleteLocationRecord, updateLocation as updateLocationRecord } from "@workspace/db"
 import { revalidatePath } from "next/cache"
-import { db } from "@workspace/db/client"
-import { locations } from "@workspace/db/schema"
 import { requireCompanyAccess } from "@/lib/company-access"
 
 interface LocationData {
@@ -18,15 +16,7 @@ interface LocationData {
 export async function createLocation(companySlug: string, data: LocationData) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db.insert(locations).values({
-    companyId: company.id,
-    name: data.name,
-    code: data.code ?? null,
-    address: data.address ?? null,
-    contactPerson: data.contactPerson ?? null,
-    phone: data.phone ?? null,
-    isDefault: data.isDefault ?? false,
-  })
+  await createLocationRecord(company.id, data)
 
   revalidatePath(`/${company.slug}/masters/locations`)
 }
@@ -38,17 +28,7 @@ export async function updateLocation(
 ) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .update(locations)
-    .set({
-      name: data.name,
-      code: data.code ?? null,
-      address: data.address ?? null,
-      contactPerson: data.contactPerson ?? null,
-      phone: data.phone ?? null,
-      isDefault: data.isDefault ?? false,
-    })
-    .where(and(eq(locations.id, id), eq(locations.companyId, company.id)))
+  await updateLocationRecord(company.id, id, data)
 
   revalidatePath(`/${company.slug}/masters/locations`)
 }
@@ -56,9 +36,7 @@ export async function updateLocation(
 export async function deleteLocation(companySlug: string, id: string) {
   const { company } = await requireCompanyAccess(companySlug)
 
-  await db
-    .delete(locations)
-    .where(and(eq(locations.id, id), eq(locations.companyId, company.id)))
+  await deleteLocationRecord(company.id, id)
 
   revalidatePath(`/${company.slug}/masters/locations`)
 }

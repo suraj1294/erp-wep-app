@@ -1,10 +1,5 @@
-import { eq, and, or } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { companies, companyUsers } from "@workspace/db/schema"
+import { getCompanyAccessMembership } from "@workspace/db"
 import { requireSession } from "./auth-server"
-
-const UUID_LIKE_REFERENCE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const ROLE_HIERARCHY: Record<string, number> = {
   viewer: 0,
@@ -18,34 +13,7 @@ export async function requireCompanyAccess(
   minimumRole?: string
 ) {
   const session = await requireSession()
-  const isUuidReference = UUID_LIKE_REFERENCE.test(companyReference)
-
-  const [membership] = await db
-    .select({
-      id: companyUsers.id,
-      role: companyUsers.role,
-      isActive: companyUsers.isActive,
-      companyId: companies.id,
-      companySlug: companies.slug,
-      companyName: companies.name,
-      companyDisplayName: companies.displayName,
-    })
-    .from(companyUsers)
-    .innerJoin(companies, eq(companyUsers.companyId, companies.id))
-    .where(
-      and(
-        isUuidReference
-          ? or(
-              eq(companyUsers.companyId, companyReference),
-              eq(companies.slug, companyReference)
-            )
-          : eq(companies.slug, companyReference),
-        eq(companyUsers.userId, session.user.id),
-        eq(companyUsers.isActive, true),
-        eq(companies.isActive, true)
-      )
-    )
-    .limit(1)
+  const membership = await getCompanyAccessMembership(session.user.id, companyReference)
 
   if (!membership) {
     throw new Error("You do not have access to this company")

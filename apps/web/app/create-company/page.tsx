@@ -1,7 +1,5 @@
 import { redirect } from "next/navigation"
-import { asc, eq } from "drizzle-orm"
-import { db } from "@workspace/db/client"
-import { companyUsers, items, locations, parties, unitsOfMeasure } from "@workspace/db/schema"
+import { addCompanyOwnerMembership, seedCompanyMasters } from "@workspace/db"
 import { seedCompanyDefaults } from "@workspace/db/seeds/company-defaults"
 import { requireSession } from "@/lib/auth-server"
 import { createCompanyRecord } from "@/lib/company-slug"
@@ -67,63 +65,16 @@ async function createCompanyAction(formData: FormData) {
     createdBy: session.user.id,
   })
 
-  await db.insert(companyUsers).values({
-    companyId: company.id,
-    userId: session.user.id,
-    role: "owner",
-  })
+  await addCompanyOwnerMembership(company.id, session.user.id)
 
   // Seed standard account groups, accounts, voucher types, UoM and location
   await seedCompanyDefaults(company.id)
 
-  const [baseUnit] = await db
-    .select({ id: unitsOfMeasure.id })
-    .from(unitsOfMeasure)
-    .where(eq(unitsOfMeasure.companyId, company.id))
-    .orderBy(asc(unitsOfMeasure.isBaseUnit), asc(unitsOfMeasure.name))
-
-  const partyRows = optionalParties
-    .map((party) => ({
-      companyId: company.id,
-      name: party.name.trim(),
-      displayName: party.displayName?.trim() || null,
-      type: party.type?.trim() || "customer",
-      phone: party.phone?.trim() || null,
-      email: party.email?.trim() || null,
-    }))
-    .filter((party) => party.name)
-
-  const itemRows = optionalItems
-    .map((item) => ({
-      companyId: company.id,
-      name: item.name.trim(),
-      code: item.code?.trim() || null,
-      salesRate: item.salesRate?.trim() || null,
-      purchaseRate: item.purchaseRate?.trim() || null,
-      unitId: baseUnit?.id ?? null,
-    }))
-    .filter((item) => item.name)
-
-  const locationRows = optionalLocations
-    .map((location) => ({
-      companyId: company.id,
-      name: location.name.trim(),
-      code: location.code?.trim() || null,
-      phone: location.phone?.trim() || null,
-    }))
-    .filter((location) => location.name)
-
-  if (partyRows.length > 0) {
-    await db.insert(parties).values(partyRows)
-  }
-
-  if (itemRows.length > 0) {
-    await db.insert(items).values(itemRows)
-  }
-
-  if (locationRows.length > 0) {
-    await db.insert(locations).values(locationRows)
-  }
+  await seedCompanyMasters(company.id, {
+    parties: optionalParties,
+    items: optionalItems,
+    locations: optionalLocations,
+  })
 
   redirect(`/${company.slug}`)
 }

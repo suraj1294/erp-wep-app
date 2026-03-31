@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { db } from "@workspace/db/client"
-import { companyUsers } from "@workspace/db/schema"
+import { addCompanyOwnerMembership } from "@workspace/db"
 import { requireSession } from "@/lib/auth-server"
 import { createCompanyRecord } from "@/lib/company-slug"
 
@@ -23,11 +22,7 @@ export async function POST(request: Request) {
       createdBy: session.user.id,
     })
 
-    await db.insert(companyUsers).values({
-      companyId: company.id,
-      userId: session.user.id,
-      role: "owner",
-    })
+    await addCompanyOwnerMembership(company.id, session.user.id)
 
     return NextResponse.json(company)
   } catch (error) {
