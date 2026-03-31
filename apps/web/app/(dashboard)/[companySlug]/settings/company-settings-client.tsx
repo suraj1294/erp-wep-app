@@ -4,10 +4,16 @@ import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { Add01Icon, Settings01Icon } from "@hugeicons/core-free-icons"
+import type { SampleDataSeedProgress } from "@workspace/db"
 import { toast } from "@workspace/ui/components/sonner"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@workspace/ui/components/card"
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import {
   Table,
@@ -33,6 +39,7 @@ import {
 import {
   createCompanyFromSettings,
   disableManagedCompany,
+  seedSampleDataAction,
   updateManagedCompany,
 } from "./actions"
 
@@ -52,6 +59,8 @@ interface CompanyRow {
 interface CompanySettingsClientProps {
   currentCompanySlug: string
   companies: CompanyRow[]
+  sampleDataSeeded: boolean
+  initialSampleDataSeedProgress: SampleDataSeedProgress | null
 }
 
 interface CompanyFormState {
@@ -72,18 +81,63 @@ const emptyErrors = {
   name: "",
 }
 
+const SAMPLE_DATA_STEP_LABELS = [
+  { key: "validate", label: "Validate company" },
+  { key: "reference-data", label: "Load reference masters" },
+  { key: "accounts", label: "Create supporting ledgers" },
+  { key: "tax-rates", label: "Create tax rates" },
+  { key: "locations", label: "Create extra locations" },
+  { key: "parties", label: "Create parties and ledgers" },
+  { key: "items", label: "Create items" },
+  { key: "vouchers", label: "Post sample vouchers" },
+  { key: "finalize", label: "Finalize seed" },
+] as const
+
+function getSeedStatusBadgeVariant(status: string) {
+  if (status === "done" || status === "completed") return "default" as const
+  if (status === "running") return "secondary" as const
+  if (status === "error") return "destructive" as const
+  return "outline" as const
+}
+
+function createOptimisticSeedProgress(): SampleDataSeedProgress {
+  const timestamp = new Date().toISOString()
+
+  return {
+    status: "running",
+    message: "Validating company for sample data.",
+    currentStepKey: "validate",
+    startedAt: timestamp,
+    updatedAt: timestamp,
+    steps: SAMPLE_DATA_STEP_LABELS.map((step) => ({
+      ...step,
+      status:
+        step.key === "validate" ? ("running" as const) : ("pending" as const),
+      detail: step.key === "validate" ? "Preparing seed workflow." : undefined,
+    })),
+  }
+}
+
 export function CompanySettingsClient({
   currentCompanySlug,
   companies,
+  sampleDataSeeded,
+  initialSampleDataSeedProgress,
 }: CompanySettingsClientProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [disableDialogOpen, setDisableDialogOpen] = useState(false)
+  const [seedDialogOpen, setSeedDialogOpen] = useState(false)
   const [editingCompany, setEditingCompany] = useState<CompanyRow | null>(null)
-  const [disablingCompany, setDisablingCompany] = useState<CompanyRow | null>(null)
+  const [disablingCompany, setDisablingCompany] = useState<CompanyRow | null>(
+    null
+  )
   const [companyRows, setCompanyRows] = useState(companies)
+  const [seedProgress, setSeedProgress] =
+    useState<SampleDataSeedProgress | null>(initialSampleDataSeedProgress)
+  const [isSeedingSampleData, setIsSeedingSampleData] = useState(false)
   const [createForm, setCreateForm] = useState(emptyCreateForm)
   const [createErrors, setCreateErrors] = useState(emptyErrors)
   const [editForm, setEditForm] = useState<CompanyFormState>({
@@ -99,6 +153,58 @@ export function CompanySettingsClient({
   useEffect(() => {
     setCompanyRows(companies)
   }, [companies])
+
+  useEffect(() => {
+    setSeedProgress(initialSampleDataSeedProgress)
+  }, [initialSampleDataSeedProgress])
+
+  useEffect(() => {
+    if (!isSeedingSampleData && seedProgress?.status !== "running") {
+      return
+    }
+
+    let cancelled = false
+
+    async function pollProgress() {
+      const response = await fetch(
+        `/${currentCompanySlug}/settings/sample-data-status`,
+        {
+          cache: "no-store",
+          credentials: "same-origin",
+        }
+      )
+
+      if (cancelled) {
+        return
+      }
+
+      if (!response.ok) {
+        return
+      }
+
+      const data = (await response.json()) as {
+        sampleDataSeeded: boolean
+        progress: SampleDataSeedProgress | null
+      }
+
+      setSeedProgress(data.progress)
+
+      if (data.progress?.status !== "running") {
+        setIsSeedingSampleData(false)
+        router.refresh()
+      }
+    }
+
+    void pollProgress()
+    const intervalId = window.setInterval(() => {
+      void pollProgress()
+    }, 5000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [currentCompanySlug, isSeedingSampleData, router, seedProgress?.status])
 
   function validateName(name: string) {
     return name.trim() ? "" : "Company name is required"
@@ -129,13 +235,58 @@ export function CompanySettingsClient({
     setDisableDialogOpen(true)
   }
 
+  function submitSeedSampleData() {
+    setSeedDialogOpen(false)
+    setIsSeedingSampleData(true)
+    setSeedProgress((current) => current ?? createOptimisticSeedProgress())
+
+    void (async () => {
+      const result = await seedSampleDataAction(currentCompanySlug)
+      setSeedProgress(result.sampleDataSeedProgress ?? null)
+
+      if (!result.ok) {
+        setIsSeedingSampleData(
+          result.sampleDataSeedProgress?.status === "running"
+        )
+        toast.error(result.message)
+        return
+      }
+
+      setIsSeedingSampleData(
+        result.sampleDataSeedProgress?.status === "running"
+      )
+      toast.success(result.message)
+      router.refresh()
+    })()
+  }
+
+  const currentCompany = companyRows.find(
+    (company) => company.slug === currentCompanySlug
+  )
+  const canSeedSampleData =
+    currentCompany?.role === "admin" || currentCompany?.role === "owner"
+  const isSeedRunning =
+    isSeedingSampleData || seedProgress?.status === "running"
+  const effectiveSampleDataSeeded =
+    sampleDataSeeded || seedProgress?.status === "completed"
+  const sampleDataSteps = seedProgress?.steps?.length
+    ? seedProgress.steps
+    : SAMPLE_DATA_STEP_LABELS.map((step) => ({
+        ...step,
+        status: "pending" as const,
+        detail: undefined,
+      }))
+
   function submitCreate() {
     const nameError = validateName(createForm.name)
     setCreateErrors({ name: nameError })
     if (nameError) return
 
     startTransition(async () => {
-      const result = await createCompanyFromSettings(currentCompanySlug, createForm)
+      const result = await createCompanyFromSettings(
+        currentCompanySlug,
+        createForm
+      )
       if (!result.ok) {
         toast.error(result.message)
         return
@@ -230,7 +381,8 @@ export function CompanySettingsClient({
               Company Settings
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Manage company details, add a new company, or disable an existing one.
+              Manage company details, add a new company, or disable an existing
+              one.
             </p>
           </div>
           <Button onClick={openCreate}>
@@ -240,7 +392,7 @@ export function CompanySettingsClient({
         </CardHeader>
       </Card>
 
-      <Card>
+      <Card data-testid="sample-data-seed-card">
         <CardHeader>
           <CardTitle>Your Companies</CardTitle>
         </CardHeader>
@@ -262,9 +414,13 @@ export function CompanySettingsClient({
                   <TableRow key={company.id}>
                     <TableCell>
                       <div className="flex flex-col gap-1">
-                        <div className="font-medium">{company.displayName || company.name}</div>
+                        <div className="font-medium">
+                          {company.displayName || company.name}
+                        </div>
                         {company.displayName && (
-                          <div className="text-xs text-muted-foreground">{company.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {company.name}
+                          </div>
                         )}
                         {company.slug === currentCompanySlug && (
                           <Badge variant="outline" className="w-fit">
@@ -311,7 +467,10 @@ export function CompanySettingsClient({
                           variant="destructive"
                           size="sm"
                           onClick={() => openDisable(company)}
-                          disabled={company.isActive !== true || company.role !== "owner"}
+                          disabled={
+                            company.isActive !== true ||
+                            company.role !== "owner"
+                          }
                         >
                           Disable
                         </Button>
@@ -323,8 +482,100 @@ export function CompanySettingsClient({
             </Table>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            Owners can disable companies. Admins and owners can update company details.
+            Owners can disable companies. Admins and owners can update company
+            details.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Developer Tools</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Populate a fresh company with realistic demo masters and vouchers
+            for testing.
+          </p>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <div className="text-sm text-muted-foreground">
+                Seeds parties, items, tax rates, banking entries, journals, and
+                all voucher types.
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge
+                  data-testid="sample-data-seed-status"
+                  variant={getSeedStatusBadgeVariant(
+                    (isSeedRunning ? "running" : null) ??
+                      seedProgress?.status ??
+                      (effectiveSampleDataSeeded ? "completed" : "pending")
+                  )}
+                >
+                  {isSeedRunning
+                    ? "Running"
+                    : seedProgress?.status === "error"
+                      ? "Failed"
+                      : effectiveSampleDataSeeded
+                        ? "Ready"
+                        : "Not Started"}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {(isSeedRunning && seedProgress?.message) ??
+                    (isSeedRunning ? "Preparing sample data seed." : null) ??
+                    seedProgress?.message ??
+                    (effectiveSampleDataSeeded
+                      ? "Sample data is already available for this company."
+                      : "Run this once on a fresh company to populate realistic demo data.")}
+                </span>
+              </div>
+            </div>
+            <Button
+              data-testid="sample-data-seed-button"
+              variant="outline"
+              onClick={() => setSeedDialogOpen(true)}
+              disabled={
+                !canSeedSampleData ||
+                isPending ||
+                isSeedRunning ||
+                effectiveSampleDataSeeded
+              }
+            >
+              {isSeedRunning
+                ? "Seeding..."
+                : effectiveSampleDataSeeded
+                  ? "Already Seeded"
+                  : "Seed Sample Data"}
+            </Button>
+          </div>
+
+          <div className="grid gap-2 rounded-md border p-3">
+            {sampleDataSteps.map((step) => (
+              <div
+                key={step.key}
+                data-testid={`sample-data-step-${step.key}`}
+                className="flex items-start justify-between gap-3 rounded-sm border border-transparent px-1 py-1"
+              >
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">{step.label}</div>
+                  {step.detail ? (
+                    <div className="text-xs text-muted-foreground">
+                      {step.detail}
+                    </div>
+                  ) : null}
+                </div>
+                <Badge variant={getSeedStatusBadgeVariant(step.status)}>
+                  {step.status === "done"
+                    ? "Done"
+                    : step.status === "running"
+                      ? "Running"
+                      : step.status === "error"
+                        ? "Failed"
+                        : "Pending"}
+                </Badge>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -336,11 +587,18 @@ export function CompanySettingsClient({
         onSubmit={submitCreate}
         isPending={isPending}
       >
-        <FormField label="Company Name" required error={createErrors.name || undefined}>
+        <FormField
+          label="Company Name"
+          required
+          error={createErrors.name || undefined}
+        >
           <Input
             value={createForm.name}
             onChange={(event) =>
-              setCreateForm((current) => ({ ...current, name: event.target.value }))
+              setCreateForm((current) => ({
+                ...current,
+                name: event.target.value,
+              }))
             }
             placeholder="Acme Corporation"
           />
@@ -362,15 +620,26 @@ export function CompanySettingsClient({
       <MasterDialog
         open={editDialogOpen}
         onOpenChange={setEditDialogOpen}
-        title={editingCompany ? `Edit ${editingCompany.displayName || editingCompany.name}` : "Edit Company"}
+        title={
+          editingCompany
+            ? `Edit ${editingCompany.displayName || editingCompany.name}`
+            : "Edit Company"
+        }
         onSubmit={submitEdit}
         isPending={isPending}
       >
-        <FormField label="Company Name" required error={editErrors.name || undefined}>
+        <FormField
+          label="Company Name"
+          required
+          error={editErrors.name || undefined}
+        >
           <Input
             value={editForm.name}
             onChange={(event) =>
-              setEditForm((current) => ({ ...current, name: event.target.value }))
+              setEditForm((current) => ({
+                ...current,
+                name: event.target.value,
+              }))
             }
             placeholder="Acme Corporation"
           />
@@ -391,7 +660,10 @@ export function CompanySettingsClient({
           <Input
             value={editForm.email}
             onChange={(event) =>
-              setEditForm((current) => ({ ...current, email: event.target.value }))
+              setEditForm((current) => ({
+                ...current,
+                email: event.target.value,
+              }))
             }
             placeholder="accounts@acme.com"
           />
@@ -400,7 +672,10 @@ export function CompanySettingsClient({
           <Input
             value={editForm.phone}
             onChange={(event) =>
-              setEditForm((current) => ({ ...current, phone: event.target.value }))
+              setEditForm((current) => ({
+                ...current,
+                phone: event.target.value,
+              }))
             }
             placeholder="+91 98765 43210"
           />
@@ -409,7 +684,10 @@ export function CompanySettingsClient({
           <Input
             value={editForm.gstin}
             onChange={(event) =>
-              setEditForm((current) => ({ ...current, gstin: event.target.value }))
+              setEditForm((current) => ({
+                ...current,
+                gstin: event.target.value,
+              }))
             }
             placeholder="22AAAAA0000A1Z5"
           />
@@ -418,7 +696,10 @@ export function CompanySettingsClient({
           <Input
             value={editForm.pan}
             onChange={(event) =>
-              setEditForm((current) => ({ ...current, pan: event.target.value }))
+              setEditForm((current) => ({
+                ...current,
+                pan: event.target.value,
+              }))
             }
             placeholder="AAAAA0000A"
           />
@@ -429,10 +710,13 @@ export function CompanySettingsClient({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Disable &quot;{disablingCompany?.displayName || disablingCompany?.name || ""}&quot;?
+              Disable &quot;
+              {disablingCompany?.displayName || disablingCompany?.name || ""}
+              &quot;?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Disabled companies disappear from the active company flow and can no longer be opened.
+              Disabled companies disappear from the active company flow and can
+              no longer be opened.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -440,9 +724,32 @@ export function CompanySettingsClient({
             <AlertDialogAction
               onClick={submitDisable}
               disabled={isPending}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="text-destructive-foreground bg-destructive hover:bg-destructive/90"
             >
               {isPending ? "Disabling..." : "Disable"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={seedDialogOpen} onOpenChange={setSeedDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Seed sample data for this company?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will create demo parties, items, tax rates, and vouchers
+              across the financial year.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={submitSeedSampleData}
+              disabled={isPending}
+            >
+              {isPending ? "Seeding..." : "Seed Sample Data"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

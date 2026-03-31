@@ -5,6 +5,11 @@ import { and, eq, ne } from "drizzle-orm"
 import { db } from "@workspace/db/client"
 import { companies, companyUsers } from "@workspace/db/schema"
 import { seedCompanyDefaults } from "@workspace/db/seeds/company-defaults"
+import {
+  getSampleDataSeedProgress,
+  seedSampleData,
+  type SampleDataSeedProgress,
+} from "@workspace/db"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { requireSession } from "@/lib/auth-server"
 import { createCompanyRecord } from "@/lib/company-slug"
@@ -15,6 +20,7 @@ type ActionResult = {
   redirectCompanySlug?: string
   companyId?: string
   companySlug?: string
+  sampleDataSeedProgress?: SampleDataSeedProgress | null
 }
 
 const ROLE_HIERARCHY: Record<string, number> = {
@@ -59,7 +65,8 @@ export async function createCompanyFromSettings(
     displayName?: string
   }
 ): Promise<ActionResult> {
-  const { company: currentCompany } = await requireCompanyAccess(currentCompanySlug)
+  const { company: currentCompany } =
+    await requireCompanyAccess(currentCompanySlug)
   const session = await requireSession()
 
   const name = input.name.trim()
@@ -109,7 +116,8 @@ export async function updateManagedCompany(
     pan?: string
   }
 ): Promise<ActionResult> {
-  const { company: currentCompany } = await requireCompanyAccess(currentCompanySlug)
+  const { company: currentCompany } =
+    await requireCompanyAccess(currentCompanySlug)
   const session = await requireSession()
   const membership = await getTargetMembership(session.user.id, targetCompanyId)
 
@@ -158,7 +166,8 @@ export async function disableManagedCompany(
   currentCompanySlug: string,
   targetCompanyId: string
 ): Promise<ActionResult> {
-  const { company: currentCompany } = await requireCompanyAccess(currentCompanySlug)
+  const { company: currentCompany } =
+    await requireCompanyAccess(currentCompanySlug)
   const session = await requireSession()
   const membership = await getTargetMembership(session.user.id, targetCompanyId)
 
@@ -228,5 +237,34 @@ export async function disableManagedCompany(
     message: "Company disabled successfully.",
     redirectCompanySlug:
       targetCompanyId === currentCompany.id ? fallbackCompany?.slug : undefined,
+  }
+}
+
+export async function seedSampleDataAction(
+  companySlug: string
+): Promise<ActionResult> {
+  const { session, company, membership } =
+    await requireCompanyAccess(companySlug)
+
+  if (!hasMinimumRole(membership.role, "admin")) {
+    return {
+      ok: false,
+      message: "Only admins or owners can seed sample data.",
+    }
+  }
+
+  const result = await seedSampleData(company.id, session.user.id)
+  const [companyRow] = await db
+    .select({ settings: companies.settings })
+    .from(companies)
+    .where(eq(companies.id, company.id))
+    .limit(1)
+
+  revalidatePath(`/${company.slug}`)
+  revalidatePath(`/${company.slug}/settings`)
+
+  return {
+    ...result,
+    sampleDataSeedProgress: getSampleDataSeedProgress(companyRow?.settings),
   }
 }

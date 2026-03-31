@@ -42,10 +42,7 @@ export default defineConfig({
         storageState: "e2e/.auth/user.json",
       },
       dependencies: ["setup"],
-      testIgnore: [
-        /auth\.setup\.ts/,
-        /unauthenticated\/.+\.spec\.ts/,
-      ],
+      testIgnore: [/auth\.setup\.ts/, /unauthenticated\/.+\.spec\.ts/],
       testMatch: /authenticated\/.+\.spec\.ts/,
     },
 
@@ -59,7 +56,7 @@ export default defineConfig({
 
   /* Reuse the dev server if already running; start it otherwise */
   webServer: {
-    command: "pnpm -C ../web dev",
+    command: "E2E_SAMPLE_DATA_SEED_DELAY_MS=75 pnpm -C ../web dev",
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
