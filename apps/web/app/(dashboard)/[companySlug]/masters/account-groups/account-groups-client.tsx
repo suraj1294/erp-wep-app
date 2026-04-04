@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import { Badge } from "@workspace/ui/components/badge"
 import {
@@ -19,7 +21,7 @@ import {
   createAccountGroup,
   updateAccountGroup,
   deleteAccountGroup,
-} from "./actions"
+} from "@/lib/api/masters"
 
 export interface GroupRow {
   id: string
@@ -64,6 +66,7 @@ export function AccountGroupsClient({
   companySlug,
   initialGroups,
 }: AccountGroupsClientProps) {
+  const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<GroupRow | null>(null)
@@ -109,27 +112,45 @@ export function AccountGroupsClient({
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        code: form.code.trim() || undefined,
-        accountType: form.accountType,
-        nature: form.nature,
-        parentId: form.parentId || null,
+      try {
+        const data = {
+          name: form.name.trim(),
+          code: form.code.trim() || undefined,
+          accountType: form.accountType,
+          nature: form.nature,
+          parentId: form.parentId || null,
+        }
+        if (editing) {
+          await updateAccountGroup(companySlug, editing.id, data)
+        } else {
+          await createAccountGroup(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to save account group."
+        )
       }
-      if (editing) {
-        await updateAccountGroup(companySlug, editing.id, data)
-      } else {
-        await createAccountGroup(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteAccountGroup(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        await deleteAccountGroup(companySlug, deleting.id)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to delete account group."
+        )
+      }
     })
   }
 
@@ -147,7 +168,10 @@ export function AccountGroupsClient({
       label: "Type",
       render: (value: unknown) =>
         value ? (
-          <Badge variant="outline" className="bg-orange-500/10 text-orange-600 border-orange-200">
+          <Badge
+            variant="outline"
+            className="border-orange-200 bg-orange-500/10 text-orange-600"
+          >
             System
           </Badge>
         ) : (

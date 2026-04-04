@@ -40,7 +40,12 @@ const EMPTY_LINE: AccountLine = {
 type Action =
   | { type: "ADD_ROW" }
   | { type: "REMOVE_ROW"; index: number }
-  | { type: "UPDATE_FIELD"; index: number; field: keyof AccountLine; value: string }
+  | {
+      type: "UPDATE_FIELD"
+      index: number
+      field: keyof AccountLine
+      value: string
+    }
   | { type: "SET_ACCOUNT"; index: number; account: AccountOption }
   | { type: "SET_DEBIT"; index: number; value: string }
   | { type: "SET_CREDIT"; index: number; value: string }
@@ -58,20 +63,32 @@ function reducer(state: AccountLine[], action: Action): AccountLine[] {
     case "SET_ACCOUNT":
       return state.map((row, i) =>
         i === action.index
-          ? { ...row, accountId: action.account.id, accountName: action.account.name }
+          ? {
+              ...row,
+              accountId: action.account.id,
+              accountName: action.account.name,
+            }
           : row
       )
     // Debit and credit are mutually exclusive per row (for journal/contra)
     case "SET_DEBIT":
       return state.map((row, i) =>
         i === action.index
-          ? { ...row, debitAmount: action.value, creditAmount: action.value ? "" : row.creditAmount }
+          ? {
+              ...row,
+              debitAmount: action.value,
+              creditAmount: action.value ? "" : row.creditAmount,
+            }
           : row
       )
     case "SET_CREDIT":
       return state.map((row, i) =>
         i === action.index
-          ? { ...row, creditAmount: action.value, debitAmount: action.value ? "" : row.debitAmount }
+          ? {
+              ...row,
+              creditAmount: action.value,
+              debitAmount: action.value ? "" : row.debitAmount,
+            }
           : row
       )
     default:
@@ -129,7 +146,7 @@ export function AccountLineItems({
 
       {/* Column headers */}
       {isJournal ? (
-        <div className="hidden grid-cols-[2rem_1fr_1.5fr_7rem_7rem_2rem] gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground md:grid">
+        <div className="hidden grid-cols-[2rem_1fr_1.5fr_7rem_7rem_2rem] gap-2 text-[10px] font-medium tracking-wider text-muted-foreground uppercase md:grid">
           <span>#</span>
           <span>Account</span>
           <span>Description</span>
@@ -138,7 +155,7 @@ export function AccountLineItems({
           <span />
         </div>
       ) : (
-        <div className="hidden grid-cols-[2rem_1fr_1.5fr_8rem_2rem] gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground md:grid">
+        <div className="hidden grid-cols-[2rem_1fr_1.5fr_8rem_2rem] gap-2 text-[10px] font-medium tracking-wider text-muted-foreground uppercase md:grid">
           <span>#</span>
           <span>Account</span>
           <span>Description</span>
@@ -160,13 +177,17 @@ export function AccountLineItems({
             )}
           >
             {/* # */}
-            <span className="text-center text-xs text-muted-foreground">{i + 1}</span>
+            <span className="text-center text-xs text-muted-foreground">
+              {i + 1}
+            </span>
 
             {/* Account */}
             <AccountCombobox
               options={accountOptions}
               value={line.accountId}
-              onSelect={(acc) => dispatch({ type: "SET_ACCOUNT", index: i, account: acc })}
+              onSelect={(acc) =>
+                dispatch({ type: "SET_ACCOUNT", index: i, account: acc })
+              }
             />
 
             {/* Description */}
@@ -192,7 +213,11 @@ export function AccountLineItems({
                   step="0.01"
                   value={line.debitAmount}
                   onChange={(e) =>
-                    dispatch({ type: "SET_DEBIT", index: i, value: e.target.value })
+                    dispatch({
+                      type: "SET_DEBIT",
+                      index: i,
+                      value: e.target.value,
+                    })
                   }
                   placeholder="0.00"
                   className="text-right"
@@ -204,7 +229,11 @@ export function AccountLineItems({
                   step="0.01"
                   value={line.creditAmount}
                   onChange={(e) =>
-                    dispatch({ type: "SET_CREDIT", index: i, value: e.target.value })
+                    dispatch({
+                      type: "SET_CREDIT",
+                      index: i,
+                      value: e.target.value,
+                    })
                   }
                   placeholder="0.00"
                   className="text-right"

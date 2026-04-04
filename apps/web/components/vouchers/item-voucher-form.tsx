@@ -21,7 +21,7 @@ import {
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
 import type { ItemOption } from "./item-combobox"
-import { createVoucher } from "@/app/(dashboard)/[companySlug]/vouchers/actions"
+import { createVoucher } from "@/lib/api/vouchers"
 
 export interface VoucherTypeOption {
   id: string
@@ -66,9 +66,7 @@ export function ItemVoucherForm({
   const [isPending, startTransition] = useTransition()
 
   // Header state
-  const [voucherTypeId, setVoucherTypeId] = useState(
-    voucherTypes[0]?.id ?? ""
-  )
+  const [voucherTypeId, setVoucherTypeId] = useState(voucherTypes[0]?.id ?? "")
   const [voucherDate, setVoucherDate] = useState(today)
   const [referenceNumber, setReferenceNumber] = useState("")
   const [partyId, setPartyId] = useState("")
@@ -124,7 +122,8 @@ export function ItemVoucherForm({
         (parseFloat(l.quantity) || 0) > 0 &&
         (parseFloat(l.rate) || 0) > 0
     )
-    if (!hasLine) return "At least one line with item, quantity, and rate is required."
+    if (!hasLine)
+      return "At least one line with item, quantity, and rate is required."
     return null
   }
 
@@ -177,7 +176,9 @@ export function ItemVoucherForm({
           router.push(listHref)
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Failed to save voucher.")
+        toast.error(
+          err instanceof Error ? err.message : "Failed to save voucher."
+        )
       }
     })
   }
@@ -207,7 +208,7 @@ export function ItemVoucherForm({
     >
       {/* Voucher type selector */}
       {voucherTypes.length > 1 && (
-        <div className="flex flex-col gap-1 max-w-xs">
+        <div className="flex max-w-xs flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">
             Voucher Type
           </label>
@@ -228,9 +229,7 @@ export function ItemVoucherForm({
 
       <VoucherHeader
         voucherClass={voucherClass}
-        voucherNumber={
-          selectedVt ? previewNumber(selectedVt) : "—"
-        }
+        voucherNumber={selectedVt ? previewNumber(selectedVt) : "—"}
         voucherDate={voucherDate}
         onVoucherDateChange={setVoucherDate}
         referenceNumber={referenceNumber}

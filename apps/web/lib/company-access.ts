@@ -13,7 +13,10 @@ export async function requireCompanyAccess(
   minimumRole?: string
 ) {
   const session = await requireSession()
-  const membership = await getCompanyAccessMembership(session.user.id, companyReference)
+  const membership = await getCompanyAccessMembership(
+    session.user.id,
+    companyReference
+  )
 
   if (!membership) {
     throw new Error("You do not have access to this company")

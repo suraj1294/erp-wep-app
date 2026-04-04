@@ -1,5 +1,4 @@
-import { getAccountVoucherFormData } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getVoucherFormData } from "@/lib/server-api"
 import { AccountVoucherForm } from "@/components/vouchers/account-voucher-form"
 
 interface PageProps {
@@ -8,21 +7,19 @@ interface PageProps {
 
 export default async function NewJournalPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const formData = await getAccountVoucherFormData(company.id, "journal")
+  const formData = await getVoucherFormData(companySlug, "journal")
 
   return (
     <AccountVoucherForm
-      companyId={company.id}
+      companyId={formData.companyId}
       voucherClass="journal"
       voucherTypes={formData.voucherTypes}
       parties={formData.parties}
       accounts={formData.accounts}
       cashBankAccounts={formData.cashBankAccounts}
-      backHref={`/${company.slug}/journal`}
+      backHref={`/${formData.companySlug}/journal`}
       title="New Journal Entry"
-      listHref={`/${company.slug}/journal`}
+      listHref={`/${formData.companySlug}/journal`}
     />
   )
 }

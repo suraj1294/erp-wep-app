@@ -1,5 +1,4 @@
-import { getItemVoucherFormData } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getVoucherFormData } from "@/lib/server-api"
 import { ItemVoucherForm } from "@/components/vouchers/item-voucher-form"
 
 interface PageProps {
@@ -8,21 +7,19 @@ interface PageProps {
 
 export default async function NewDebitNotePage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const formData = await getItemVoucherFormData(company.id, "debit_note")
+  const formData = await getVoucherFormData(companySlug, "debit_note")
 
   return (
     <ItemVoucherForm
-      companyId={company.id}
+      companyId={formData.companyId}
       voucherClass="debit_note"
       voucherTypes={formData.voucherTypes}
       parties={formData.parties}
       items={formData.items}
       accounts={formData.accounts}
-      backHref={`/${company.slug}/debit-notes`}
+      backHref={`/${formData.companySlug}/debit-notes`}
       title="New Debit Note"
-      listHref={`/${company.slug}/debit-notes`}
+      listHref={`/${formData.companySlug}/debit-notes`}
     />
   )
 }

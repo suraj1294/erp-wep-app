@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation"
-import { listActiveCompaniesForUser } from "@workspace/db"
 import { getServerSession } from "@/lib/auth-server"
+import { getAccessibleCompanies } from "@/lib/server-api"
 import { DashboardShell } from "../dashboard-shell"
 
 export default async function CompanyLayout({
@@ -16,7 +16,7 @@ export default async function CompanyLayout({
     redirect("/sign-in")
   }
 
-  const userCompanies = await listActiveCompaniesForUser(session.user.id)
+  const userCompanies = await getAccessibleCompanies()
 
   if (userCompanies.length === 0) {
     redirect("/create-company")

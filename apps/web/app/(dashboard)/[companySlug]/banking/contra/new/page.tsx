@@ -1,5 +1,4 @@
-import { getAccountVoucherFormData } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getVoucherFormData } from "@/lib/server-api"
 import { AccountVoucherForm } from "@/components/vouchers/account-voucher-form"
 
 interface PageProps {
@@ -8,21 +7,19 @@ interface PageProps {
 
 export default async function NewContraPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const formData = await getAccountVoucherFormData(company.id, "contra")
+  const formData = await getVoucherFormData(companySlug, "contra")
 
   return (
     <AccountVoucherForm
-      companyId={company.id}
+      companyId={formData.companyId}
       voucherClass="contra"
       voucherTypes={formData.voucherTypes}
       parties={formData.parties}
       accounts={formData.accounts}
       cashBankAccounts={formData.cashBankAccounts}
-      backHref={`/${company.slug}/banking`}
+      backHref={`/${formData.companySlug}/banking`}
       title="New Contra Entry"
-      listHref={`/${company.slug}/banking`}
+      listHref={`/${formData.companySlug}/banking`}
     />
   )
 }

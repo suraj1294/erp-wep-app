@@ -39,9 +39,10 @@ import {
 import {
   createCompanyFromSettings,
   disableManagedCompany,
+  getSampleDataStatus,
   seedSampleDataAction,
   updateManagedCompany,
-} from "./actions"
+} from "@/lib/api/settings"
 
 interface CompanyRow {
   id: string
@@ -166,32 +167,21 @@ export function CompanySettingsClient({
     let cancelled = false
 
     async function pollProgress() {
-      const response = await fetch(
-        `/${currentCompanySlug}/settings/sample-data-status`,
-        {
-          cache: "no-store",
-          credentials: "same-origin",
+      try {
+        const data = await getSampleDataStatus(currentCompanySlug)
+
+        if (cancelled) {
+          return
         }
-      )
 
-      if (cancelled) {
+        setSeedProgress(data.progress)
+
+        if (data.progress?.status !== "running") {
+          setIsSeedingSampleData(false)
+          router.refresh()
+        }
+      } catch {
         return
-      }
-
-      if (!response.ok) {
-        return
-      }
-
-      const data = (await response.json()) as {
-        sampleDataSeeded: boolean
-        progress: SampleDataSeedProgress | null
-      }
-
-      setSeedProgress(data.progress)
-
-      if (data.progress?.status !== "running") {
-        setIsSeedingSampleData(false)
-        router.refresh()
       }
     }
 
@@ -241,22 +231,29 @@ export function CompanySettingsClient({
     setSeedProgress((current) => current ?? createOptimisticSeedProgress())
 
     void (async () => {
-      const result = await seedSampleDataAction(currentCompanySlug)
-      setSeedProgress(result.sampleDataSeedProgress ?? null)
+      try {
+        const result = await seedSampleDataAction(currentCompanySlug)
+        setSeedProgress(result.sampleDataSeedProgress ?? null)
 
-      if (!result.ok) {
+        if (!result.ok) {
+          setIsSeedingSampleData(
+            result.sampleDataSeedProgress?.status === "running"
+          )
+          toast.error(result.message)
+          return
+        }
+
         setIsSeedingSampleData(
           result.sampleDataSeedProgress?.status === "running"
         )
-        toast.error(result.message)
-        return
+        toast.success(result.message)
+        router.refresh()
+      } catch (error) {
+        setIsSeedingSampleData(false)
+        toast.error(
+          error instanceof Error ? error.message : "Failed to seed sample data."
+        )
       }
-
-      setIsSeedingSampleData(
-        result.sampleDataSeedProgress?.status === "running"
-      )
-      toast.success(result.message)
-      router.refresh()
     })()
   }
 
@@ -283,18 +280,24 @@ export function CompanySettingsClient({
     if (nameError) return
 
     startTransition(async () => {
-      const result = await createCompanyFromSettings(
-        currentCompanySlug,
-        createForm
-      )
-      if (!result.ok) {
-        toast.error(result.message)
-        return
-      }
+      try {
+        const result = await createCompanyFromSettings(
+          currentCompanySlug,
+          createForm
+        )
+        if (!result.ok) {
+          toast.error(result.message)
+          return
+        }
 
-      setCreateDialogOpen(false)
-      toast.success(result.message)
-      router.refresh()
+        setCreateDialogOpen(false)
+        toast.success(result.message)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create company."
+        )
+      }
     })
   }
 
@@ -306,34 +309,40 @@ export function CompanySettingsClient({
     if (nameError) return
 
     startTransition(async () => {
-      const result = await updateManagedCompany(
-        currentCompanySlug,
-        editingCompany.id,
-        editForm
-      )
-      if (!result.ok) {
-        toast.error(result.message)
-        return
-      }
-
-      setCompanyRows((current) =>
-        current.map((company) =>
-          company.id === editingCompany.id
-            ? {
-                ...company,
-                name: editForm.name.trim(),
-                displayName: editForm.displayName.trim() || null,
-                email: editForm.email.trim() || null,
-                phone: editForm.phone.trim() || null,
-                gstin: editForm.gstin.trim() || null,
-                pan: editForm.pan.trim() || null,
-              }
-            : company
+      try {
+        const result = await updateManagedCompany(
+          currentCompanySlug,
+          editingCompany.id,
+          editForm
         )
-      )
-      setEditDialogOpen(false)
-      toast.success(result.message)
-      router.refresh()
+        if (!result.ok) {
+          toast.error(result.message)
+          return
+        }
+
+        setCompanyRows((current) =>
+          current.map((company) =>
+            company.id === editingCompany.id
+              ? {
+                  ...company,
+                  name: editForm.name.trim(),
+                  displayName: editForm.displayName.trim() || null,
+                  email: editForm.email.trim() || null,
+                  phone: editForm.phone.trim() || null,
+                  gstin: editForm.gstin.trim() || null,
+                  pan: editForm.pan.trim() || null,
+                }
+              : company
+          )
+        )
+        setEditDialogOpen(false)
+        toast.success(result.message)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to update company."
+        )
+      }
     })
   }
 
@@ -341,33 +350,39 @@ export function CompanySettingsClient({
     if (!disablingCompany) return
 
     startTransition(async () => {
-      const result = await disableManagedCompany(
-        currentCompanySlug,
-        disablingCompany.id
-      )
-      if (!result.ok) {
-        toast.error(result.message)
-        return
-      }
-
-      setDisableDialogOpen(false)
-      toast.success(result.message)
-
-      setCompanyRows((current) =>
-        current.map((company) =>
-          company.id === disablingCompany.id
-            ? { ...company, isActive: false }
-            : company
+      try {
+        const result = await disableManagedCompany(
+          currentCompanySlug,
+          disablingCompany.id
         )
-      )
+        if (!result.ok) {
+          toast.error(result.message)
+          return
+        }
 
-      if (result.redirectCompanySlug) {
-        router.push(`/${result.redirectCompanySlug}/settings`)
+        setDisableDialogOpen(false)
+        toast.success(result.message)
+
+        setCompanyRows((current) =>
+          current.map((company) =>
+            company.id === disablingCompany.id
+              ? { ...company, isActive: false }
+              : company
+          )
+        )
+
+        if (result.redirectCompanySlug) {
+          router.push(`/${result.redirectCompanySlug}/settings`)
+          router.refresh()
+          return
+        }
+
         router.refresh()
-        return
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to disable company."
+        )
       }
-
-      router.refresh()
     })
   }
 

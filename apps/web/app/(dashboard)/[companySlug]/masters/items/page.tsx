@@ -1,5 +1,4 @@
-import { listItems, listUnitOptions } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getMasterResourceData } from "@/lib/server-api"
 import { ItemsClient } from "./items-client"
 
 interface PageProps {
@@ -8,19 +7,14 @@ interface PageProps {
 
 export default async function ItemsPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const [itemsList, unitsList] = await Promise.all([
-    listItems(company.id),
-    listUnitOptions(company.id),
-  ])
+  const data = await getMasterResourceData(companySlug, "items")
 
   return (
     <div className="p-6">
       <ItemsClient
-        companySlug={company.slug}
-        initialItems={itemsList}
-        units={unitsList}
+        companySlug={companySlug}
+        initialItems={data.items}
+        units={data.units}
       />
     </div>
   )

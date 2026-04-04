@@ -1,5 +1,4 @@
-import { listVoucherRowsByClass } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getVoucherListData } from "@/lib/server-api"
 import { VoucherListTable } from "@/components/vouchers/voucher-list-table"
 
 interface PageProps {
@@ -8,17 +7,18 @@ interface PageProps {
 
 export default async function DebitNotesPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const rows = await listVoucherRowsByClass(company.id, "debit_note")
+  const { rows, companySlug: resolvedCompanySlug } = await getVoucherListData(
+    companySlug,
+    "debit_note"
+  )
 
   return (
     <VoucherListTable
       title="Debit Notes"
       rows={rows}
-      newHref={`/${company.slug}/debit-notes/new`}
+      newHref={`/${resolvedCompanySlug}/debit-notes/new`}
       newLabel="New Debit Note"
-      basePath={`/${company.slug}/debit-notes`}
+      basePath={`/${resolvedCompanySlug}/debit-notes`}
     />
   )
 }

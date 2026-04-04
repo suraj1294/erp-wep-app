@@ -1,5 +1,4 @@
-import { listAccountGroups } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getMasterResourceData } from "@/lib/server-api"
 import { AccountGroupsClient } from "./account-groups-client"
 
 interface PageProps {
@@ -8,13 +7,11 @@ interface PageProps {
 
 export default async function AccountGroupsPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const groups = await listAccountGroups(company.id)
+  const groups = await getMasterResourceData(companySlug, "account-groups")
 
   return (
     <div className="p-6">
-      <AccountGroupsClient companySlug={company.slug} initialGroups={groups} />
+      <AccountGroupsClient companySlug={companySlug} initialGroups={groups} />
     </div>
   )
 }

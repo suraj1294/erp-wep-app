@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import { Badge } from "@workspace/ui/components/badge"
 import {
@@ -15,7 +17,7 @@ import { MasterDialog } from "@/components/masters/master-dialog"
 import { MasterDeleteDialog } from "@/components/masters/master-delete-dialog"
 import { FormField } from "@/components/masters/form-field"
 import { StatusBadge } from "@/components/masters/status-badge"
-import { createParty, updateParty, deleteParty } from "./actions"
+import { createParty, updateParty, deleteParty } from "@/lib/api/masters"
 
 export interface PartyRow {
   id: string
@@ -68,20 +70,29 @@ const defaultForm: FormState = {
 function PartyTypeBadge({ type }: { type: string }) {
   if (type === "customer") {
     return (
-      <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200">
+      <Badge
+        variant="outline"
+        className="border-blue-200 bg-blue-500/10 text-blue-600"
+      >
         Customer
       </Badge>
     )
   }
   if (type === "supplier") {
     return (
-      <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-200">
+      <Badge
+        variant="outline"
+        className="border-purple-200 bg-purple-500/10 text-purple-600"
+      >
         Supplier
       </Badge>
     )
   }
   return (
-    <Badge variant="outline" className="bg-teal-500/10 text-teal-600 border-teal-200">
+    <Badge
+      variant="outline"
+      className="border-teal-200 bg-teal-500/10 text-teal-600"
+    >
       Both
     </Badge>
   )
@@ -91,6 +102,7 @@ export function PartiesClient({
   companySlug,
   initialParties,
 }: PartiesClientProps) {
+  const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<PartyRow | null>(null)
@@ -140,32 +152,46 @@ export function PartiesClient({
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        displayName: form.displayName.trim() || undefined,
-        type: form.type,
-        contactPerson: form.contactPerson.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        email: form.email.trim() || undefined,
-        gstin: form.gstin.trim() || undefined,
-        pan: form.pan.trim() || undefined,
-        creditLimit: form.creditLimit || "0",
-        creditDays: parseInt(form.creditDays, 10) || 0,
+      try {
+        const data = {
+          name: form.name.trim(),
+          displayName: form.displayName.trim() || undefined,
+          type: form.type,
+          contactPerson: form.contactPerson.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          email: form.email.trim() || undefined,
+          gstin: form.gstin.trim() || undefined,
+          pan: form.pan.trim() || undefined,
+          creditLimit: form.creditLimit || "0",
+          creditDays: parseInt(form.creditDays, 10) || 0,
+        }
+        if (editing) {
+          await updateParty(companySlug, editing.id, data)
+        } else {
+          await createParty(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to save party."
+        )
       }
-      if (editing) {
-        await updateParty(companySlug, editing.id, data)
-      } else {
-        await createParty(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteParty(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        await deleteParty(companySlug, deleting.id)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete party."
+        )
+      }
     })
   }
 
@@ -237,7 +263,9 @@ export function PartiesClient({
         <FormField label="Contact Person">
           <Input
             value={form.contactPerson}
-            onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, contactPerson: e.target.value })
+            }
             placeholder="Contact person name"
           />
         </FormField>

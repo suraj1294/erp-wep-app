@@ -51,7 +51,12 @@ export function VoucherFormShell({
           <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            disabled={isPending}
+          >
             Cancel
           </Button>
           {onSaveAndNew && (
@@ -109,7 +114,12 @@ export function VoucherFormShell({
             {isPending ? "Saving…" : "Save"}
           </Button>
         </div>
-        <Button variant="ghost" size="sm" onClick={onCancel} disabled={isPending}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+          disabled={isPending}
+        >
           Cancel
         </Button>
       </div>

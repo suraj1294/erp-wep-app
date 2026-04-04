@@ -15,7 +15,7 @@ import { VoucherHeader } from "./voucher-header"
 import { AccountLineItems, useAccountLines } from "./account-line-items"
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
-import { createVoucher } from "@/app/(dashboard)/[companySlug]/vouchers/actions"
+import { createVoucher } from "@/lib/api/vouchers"
 import type { VoucherTypeOption } from "./item-voucher-form"
 
 interface AccountVoucherFormProps {
@@ -55,9 +55,7 @@ export function AccountVoucherForm({
   const mode = voucherClass as "payment" | "receipt" | "journal" | "contra"
 
   // Header state
-  const [voucherTypeId, setVoucherTypeId] = useState(
-    voucherTypes[0]?.id ?? ""
-  )
+  const [voucherTypeId, setVoucherTypeId] = useState(voucherTypes[0]?.id ?? "")
   const [voucherDate, setVoucherDate] = useState(today)
   const [referenceNumber, setReferenceNumber] = useState("")
   const [partyId, setPartyId] = useState("")
@@ -102,7 +100,8 @@ export function AccountVoucherForm({
       }
       return l.accountId && (parseFloat(l.amount) || 0) > 0
     })
-    if (!hasLine) return "At least one line with account and amount is required."
+    if (!hasLine)
+      return "At least one line with account and amount is required."
     if (isJournal && Math.abs(totalDebit - totalCredit) > 0.005)
       return `Entries are not balanced. Difference: ₹ ${Math.abs(totalDebit - totalCredit).toFixed(2)}`
     if (lines.length < 2 && isJournal)
@@ -124,7 +123,9 @@ export function AccountVoucherForm({
             accountId: l.accountId,
             description: l.description,
             amount: parseFloat(l.amount) || 0,
-            debitAmount: isJournal ? parseFloat(l.debitAmount) || 0 : parseFloat(l.amount) || 0,
+            debitAmount: isJournal
+              ? parseFloat(l.debitAmount) || 0
+              : parseFloat(l.amount) || 0,
             creditAmount: isJournal ? parseFloat(l.creditAmount) || 0 : 0,
           }))
 
@@ -162,9 +163,7 @@ export function AccountVoucherForm({
 
   // Line items for journal/contra use all accounts; for payment/receipt exclude balancing account
   const lineAccountOptions =
-    voucherClass === "contra"
-      ? cashBankAccounts
-      : accounts
+    voucherClass === "contra" ? cashBankAccounts : accounts
 
   return (
     <VoucherFormShell
@@ -180,7 +179,7 @@ export function AccountVoucherForm({
     >
       {/* Voucher type selector */}
       {voucherTypes.length > 1 && (
-        <div className="flex flex-col gap-1 max-w-xs">
+        <div className="flex max-w-xs flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">
             Voucher Type
           </label>

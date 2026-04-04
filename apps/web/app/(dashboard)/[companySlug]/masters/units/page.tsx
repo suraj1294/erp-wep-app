@@ -1,5 +1,4 @@
-import { listUnits } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getMasterResourceData } from "@/lib/server-api"
 import { UnitsClient } from "./units-client"
 
 interface PageProps {
@@ -8,13 +7,11 @@ interface PageProps {
 
 export default async function UnitsPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const units = await listUnits(company.id)
+  const units = await getMasterResourceData(companySlug, "units")
 
   return (
     <div className="p-6">
-      <UnitsClient companySlug={company.slug} initialUnits={units} />
+      <UnitsClient companySlug={companySlug} initialUnits={units} />
     </div>
   )
 }

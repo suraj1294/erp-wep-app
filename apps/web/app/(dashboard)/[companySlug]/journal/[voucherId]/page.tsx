@@ -5,7 +5,7 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Separator } from "@workspace/ui/components/separator"
-import { getVoucherDetail } from "@/app/(dashboard)/[companySlug]/vouchers/actions"
+import { getVoucherDetailData } from "@/lib/server-api"
 
 interface PageProps {
   params: Promise<{ companySlug: string; voucherId: string }>
@@ -13,7 +13,7 @@ interface PageProps {
 
 export default async function JournalVoucherPage({ params }: PageProps) {
   const { companySlug, voucherId } = await params
-  const voucher = await getVoucherDetail(companySlug, voucherId)
+  const voucher = await getVoucherDetailData(companySlug, voucherId)
   if (!voucher) notFound()
 
   const isCancelled = voucher.status === "cancelled"
@@ -61,12 +61,16 @@ export default async function JournalVoucherPage({ params }: PageProps) {
           <p>{voucher.voucherDate}</p>
         </div>
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Reference #</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Reference #
+          </p>
           <p>{voucher.referenceNumber ?? "—"}</p>
         </div>
         {voucher.narration && (
           <div className="col-span-full">
-            <p className="text-xs font-medium text-muted-foreground">Narration</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Narration
+            </p>
             <p>{voucher.narration}</p>
           </div>
         )}
@@ -106,7 +110,9 @@ export default async function JournalVoucherPage({ params }: PageProps) {
             </tbody>
             <tfoot className="bg-muted/30">
               <tr className="border-t font-semibold">
-                <td colSpan={3} className="px-3 py-2 text-right">Total</td>
+                <td colSpan={3} className="px-3 py-2 text-right">
+                  Total
+                </td>
                 <td className="px-3 py-2 text-right font-mono">
                   ₹ {totalDebit.toFixed(2)}
                 </td>

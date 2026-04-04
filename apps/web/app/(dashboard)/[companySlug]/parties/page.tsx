@@ -1,5 +1,4 @@
-import { listParties } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getMasterResourceData } from "@/lib/server-api"
 import { PartiesReportClient } from "./parties-report-client"
 
 interface PageProps {
@@ -8,9 +7,7 @@ interface PageProps {
 
 export default async function PartiesReportPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const partiesList = await listParties(company.id)
+  const partiesList = await getMasterResourceData(companySlug, "parties")
 
   return (
     <div className="p-6">

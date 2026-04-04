@@ -362,8 +362,9 @@ test.describe("Reports — Parties", () => {
   })
 
   test("shows party summaries and expandable detail", async ({ page }) => {
-    await expect(page.getByText("Total Parties").first()).toBeVisible()
-    await expect(page.getByText("3").first()).toBeVisible()
+    const totalPartiesCard = page.getByText("Total Parties").first().locator("..")
+    await expect(totalPartiesCard).toBeVisible()
+    await expect(totalPartiesCard.getByText("3", { exact: true })).toBeVisible()
     await expectActiveReportLink(page, "Parties")
 
     await page.getByRole("row", { name: /Acme Retail E2E/ }).click()

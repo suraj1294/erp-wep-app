@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -18,7 +20,7 @@ import {
   createVoucherType,
   updateVoucherType,
   deleteVoucherType,
-} from "./actions"
+} from "@/lib/api/masters"
 
 export interface VoucherTypeRow {
   id: string
@@ -73,6 +75,8 @@ export function VoucherTypesClient({
   companySlug,
   initialVoucherTypes,
 }: VoucherTypesClientProps) {
+  const router = useRouter()
+  const [rows, setRows] = useState(initialVoucherTypes)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<VoucherTypeRow | null>(null)
@@ -80,6 +84,10 @@ export function VoucherTypesClient({
   const [form, setForm] = useState<FormState>(defaultForm)
   const [errors, setErrors] = useState<FormErrors>({})
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    setRows(initialVoucherTypes)
+  }, [initialVoucherTypes])
 
   function openAdd() {
     setEditing(null)
@@ -118,27 +126,49 @@ export function VoucherTypesClient({
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        code: form.code.trim(),
-        voucherClass: form.voucherClass,
-        prefix: form.prefix.trim() || undefined,
-        startingNumber: parseInt(form.startingNumber, 10) || 1,
+      try {
+        const data = {
+          name: form.name.trim(),
+          code: form.code.trim(),
+          voucherClass: form.voucherClass,
+          prefix: form.prefix.trim() || undefined,
+          startingNumber: parseInt(form.startingNumber, 10) || 1,
+        }
+        if (editing) {
+          await updateVoucherType(companySlug, editing.id, data)
+        } else {
+          await createVoucherType(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to save voucher type."
+        )
       }
-      if (editing) {
-        await updateVoucherType(companySlug, editing.id, data)
-      } else {
-        await createVoucherType(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteVoucherType(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        const deletedId = deleting.id
+
+        await deleteVoucherType(companySlug, deletedId)
+        setRows((current) => current.filter((row) => row.id !== deletedId))
+        setDeleting(null)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "Failed to delete voucher type."
+        )
+      }
     })
   }
 
@@ -159,7 +189,7 @@ export function VoucherTypesClient({
     <>
       <MasterTable
         title="Voucher Types"
-        rows={initialVoucherTypes}
+        rows={rows}
         columns={columns}
         onAdd={openAdd}
         onEdit={openEdit}

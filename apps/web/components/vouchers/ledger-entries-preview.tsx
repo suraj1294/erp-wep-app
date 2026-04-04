@@ -45,10 +45,7 @@ export function LedgerEntriesPreview({
         <span>View Ledger Entries</span>
         <HugeiconsIcon
           icon={ArrowDown01Icon}
-          className={cn(
-            "size-3 transition-transform",
-            open && "rotate-180"
-          )}
+          className={cn("size-3 transition-transform", open && "rotate-180")}
         />
       </Button>
 
@@ -109,7 +106,12 @@ export function LedgerEntriesPreview({
 export function buildItemLedgerPreview(params: {
   voucherClass: string
   partyName: string | null
-  lines: Array<{ itemName?: string; quantity: number; rate: number; taxRate: number }>
+  lines: Array<{
+    itemName?: string
+    quantity: number
+    rate: number
+    taxRate: number
+  }>
   salesAccountName?: string
   purchaseAccountName?: string
   gstOutputName?: string
@@ -146,20 +148,40 @@ export function buildItemLedgerPreview(params: {
   if (isSales) {
     // Dr Party  Cr Sales  Cr GST Output
     if (partyName) {
-      entries.push({ accountName: `${partyName} (Sundry Debtors)`, debit: grandTotal, credit: 0 })
+      entries.push({
+        accountName: `${partyName} (Sundry Debtors)`,
+        debit: grandTotal,
+        credit: 0,
+      })
     }
     entries.push({ accountName: salesAccountName, debit: 0, credit: subtotal })
     for (const [rate, amt] of Object.entries(taxMap)) {
-      entries.push({ accountName: `${gstOutputName} @ ${rate}%`, debit: 0, credit: amt })
+      entries.push({
+        accountName: `${gstOutputName} @ ${rate}%`,
+        debit: 0,
+        credit: amt,
+      })
     }
   } else {
     // Dr Purchase  Dr GST Input  Cr Party
-    entries.push({ accountName: purchaseAccountName, debit: subtotal, credit: 0 })
+    entries.push({
+      accountName: purchaseAccountName,
+      debit: subtotal,
+      credit: 0,
+    })
     for (const [rate, amt] of Object.entries(taxMap)) {
-      entries.push({ accountName: `${gstInputName} @ ${rate}%`, debit: amt, credit: 0 })
+      entries.push({
+        accountName: `${gstInputName} @ ${rate}%`,
+        debit: amt,
+        credit: 0,
+      })
     }
     if (partyName) {
-      entries.push({ accountName: `${partyName} (Sundry Creditors)`, debit: 0, credit: grandTotal })
+      entries.push({
+        accountName: `${partyName} (Sundry Creditors)`,
+        debit: 0,
+        credit: grandTotal,
+      })
     }
   }
 

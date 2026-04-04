@@ -59,7 +59,9 @@ export function ItemCombobox({
           disabled={disabled}
           className={cn("w-full justify-between font-normal", className)}
         >
-          <span className="truncate">{selected ? selected.name : placeholder}</span>
+          <span className="truncate">
+            {selected ? selected.name : placeholder}
+          </span>
           <HugeiconsIcon
             icon={ArrowDown01Icon}
             className="ml-2 size-3 shrink-0 opacity-50"

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import {
   Select,
@@ -14,7 +16,7 @@ import { MasterDialog } from "@/components/masters/master-dialog"
 import { MasterDeleteDialog } from "@/components/masters/master-delete-dialog"
 import { FormField } from "@/components/masters/form-field"
 import { StatusBadge } from "@/components/masters/status-badge"
-import { createItem, updateItem, deleteItem } from "./actions"
+import { createItem, updateItem, deleteItem } from "@/lib/api/masters"
 
 export interface ItemRow {
   id: string
@@ -76,6 +78,7 @@ export function ItemsClient({
   initialItems,
   units,
 }: ItemsClientProps) {
+  const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<ItemRow | null>(null)
@@ -124,32 +127,46 @@ export function ItemsClient({
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        code: form.code.trim() || undefined,
-        category: form.category.trim() || undefined,
-        unitId: form.unitId || null,
-        itemType: form.itemType || "goods",
-        hsnCode: form.hsnCode.trim() || undefined,
-        taxRate: form.taxRate || "0",
-        purchaseRate: form.purchaseRate || undefined,
-        salesRate: form.salesRate || undefined,
-        mrp: form.mrp || undefined,
+      try {
+        const data = {
+          name: form.name.trim(),
+          code: form.code.trim() || undefined,
+          category: form.category.trim() || undefined,
+          unitId: form.unitId || null,
+          itemType: form.itemType || "goods",
+          hsnCode: form.hsnCode.trim() || undefined,
+          taxRate: form.taxRate || "0",
+          purchaseRate: form.purchaseRate || undefined,
+          salesRate: form.salesRate || undefined,
+          mrp: form.mrp || undefined,
+        }
+        if (editing) {
+          await updateItem(companySlug, editing.id, data)
+        } else {
+          await createItem(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to save item."
+        )
       }
-      if (editing) {
-        await updateItem(companySlug, editing.id, data)
-      } else {
-        await createItem(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteItem(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        await deleteItem(companySlug, deleting.id)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete item."
+        )
+      }
     })
   }
 

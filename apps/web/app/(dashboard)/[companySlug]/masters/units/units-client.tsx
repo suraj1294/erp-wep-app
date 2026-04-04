@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import { Switch } from "@workspace/ui/components/switch"
 import { MasterTable } from "@/components/masters/master-table"
@@ -8,7 +10,7 @@ import { MasterDialog } from "@/components/masters/master-dialog"
 import { MasterDeleteDialog } from "@/components/masters/master-delete-dialog"
 import { FormField } from "@/components/masters/form-field"
 import { StatusBadge } from "@/components/masters/status-badge"
-import { createUnit, updateUnit, deleteUnit } from "./actions"
+import { createUnit, updateUnit, deleteUnit } from "@/lib/api/masters"
 
 export interface UnitRow {
   id: string
@@ -46,6 +48,7 @@ const defaultForm: FormState = {
 }
 
 export function UnitsClient({ companySlug, initialUnits }: UnitsClientProps) {
+  const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<UnitRow | null>(null)
@@ -90,27 +93,41 @@ export function UnitsClient({ companySlug, initialUnits }: UnitsClientProps) {
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        symbol: form.symbol.trim(),
-        decimalPlaces: parseInt(form.decimalPlaces, 10) || 2,
-        isBaseUnit: form.isBaseUnit,
-        conversionFactor: form.conversionFactor || "1",
+      try {
+        const data = {
+          name: form.name.trim(),
+          symbol: form.symbol.trim(),
+          decimalPlaces: parseInt(form.decimalPlaces, 10) || 2,
+          isBaseUnit: form.isBaseUnit,
+          conversionFactor: form.conversionFactor || "1",
+        }
+        if (editing) {
+          await updateUnit(companySlug, editing.id, data)
+        } else {
+          await createUnit(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to save unit."
+        )
       }
-      if (editing) {
-        await updateUnit(companySlug, editing.id, data)
-      } else {
-        await createUnit(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteUnit(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        await deleteUnit(companySlug, deleting.id)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete unit."
+        )
+      }
     })
   }
 
@@ -169,20 +186,26 @@ export function UnitsClient({ companySlug, initialUnits }: UnitsClientProps) {
             min={0}
             max={4}
             value={form.decimalPlaces}
-            onChange={(e) => setForm({ ...form, decimalPlaces: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, decimalPlaces: e.target.value })
+            }
           />
         </FormField>
         <FormField label="Conversion Factor">
           <Input
             value={form.conversionFactor}
-            onChange={(e) => setForm({ ...form, conversionFactor: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, conversionFactor: e.target.value })
+            }
             placeholder="1"
           />
         </FormField>
         <FormField label="Is Base Unit">
           <Switch
             checked={form.isBaseUnit}
-            onCheckedChange={(checked) => setForm({ ...form, isBaseUnit: checked })}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, isBaseUnit: checked })
+            }
           />
         </FormField>
       </MasterDialog>

@@ -38,8 +38,18 @@ const EMPTY_LINE: ItemLine = {
 type Action =
   | { type: "ADD_ROW" }
   | { type: "REMOVE_ROW"; index: number }
-  | { type: "UPDATE_FIELD"; index: number; field: keyof ItemLine; value: string }
-  | { type: "SET_ITEM"; index: number; item: ItemOption; rateField: "salesRate" | "purchaseRate" }
+  | {
+      type: "UPDATE_FIELD"
+      index: number
+      field: keyof ItemLine
+      value: string
+    }
+  | {
+      type: "SET_ITEM"
+      index: number
+      item: ItemOption
+      rateField: "salesRate" | "purchaseRate"
+    }
 
 function reducer(state: ItemLine[], action: Action): ItemLine[] {
   switch (action.type) {
@@ -118,7 +128,7 @@ export function ItemLineItems({
       </div>
 
       {/* Header */}
-      <div className="hidden grid-cols-[2rem_1fr_1.5fr_5rem_6rem_5rem_6rem_2rem] gap-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground md:grid">
+      <div className="hidden grid-cols-[2rem_1fr_1.5fr_5rem_6rem_5rem_6rem_2rem] gap-2 text-[10px] font-medium tracking-wider text-muted-foreground uppercase md:grid">
         <span>#</span>
         <span>Item</span>
         <span>Description</span>
@@ -137,7 +147,9 @@ export function ItemLineItems({
             className="grid grid-cols-[2rem_1fr_1.5fr_5rem_6rem_5rem_6rem_2rem] items-center gap-2"
           >
             {/* # */}
-            <span className="text-center text-xs text-muted-foreground">{i + 1}</span>
+            <span className="text-center text-xs text-muted-foreground">
+              {i + 1}
+            </span>
 
             {/* Item */}
             <ItemCombobox

@@ -42,7 +42,9 @@ export function VoucherSummary({
               {taxGroups.map((tg) => (
                 <div key={tg.rate} className="flex justify-between">
                   <dt className="text-muted-foreground">GST @ {tg.rate}%</dt>
-                  <dd className="font-mono">{fmt(tg.amount, currencySymbol)}</dd>
+                  <dd className="font-mono">
+                    {fmt(tg.amount, currencySymbol)}
+                  </dd>
                 </div>
               ))}
               <Separator className="my-1" />

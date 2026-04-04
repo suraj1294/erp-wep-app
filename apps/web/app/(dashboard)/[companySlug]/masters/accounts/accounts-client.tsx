@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
@@ -15,7 +17,7 @@ import { MasterDialog } from "@/components/masters/master-dialog"
 import { MasterDeleteDialog } from "@/components/masters/master-delete-dialog"
 import { FormField } from "@/components/masters/form-field"
 import { StatusBadge } from "@/components/masters/status-badge"
-import { createAccount, updateAccount, deleteAccount } from "./actions"
+import { createAccount, updateAccount, deleteAccount } from "@/lib/api/masters"
 
 export interface AccountRow {
   id: string
@@ -65,6 +67,7 @@ export function AccountsClient({
   initialAccounts,
   accountGroups,
 }: AccountsClientProps) {
+  const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<AccountRow | null>(null)
@@ -108,27 +111,41 @@ export function AccountsClient({
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        code: form.code.trim() || undefined,
-        description: form.description.trim() || undefined,
-        groupId: form.groupId || null,
-        openingBalance: form.openingBalance || "0",
+      try {
+        const data = {
+          name: form.name.trim(),
+          code: form.code.trim() || undefined,
+          description: form.description.trim() || undefined,
+          groupId: form.groupId || null,
+          openingBalance: form.openingBalance || "0",
+        }
+        if (editing) {
+          await updateAccount(companySlug, editing.id, data)
+        } else {
+          await createAccount(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to save account."
+        )
       }
-      if (editing) {
-        await updateAccount(companySlug, editing.id, data)
-      } else {
-        await createAccount(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteAccount(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        await deleteAccount(companySlug, deleting.id)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete account."
+        )
+      }
     })
   }
 
@@ -210,7 +227,9 @@ export function AccountsClient({
           <Input
             type="number"
             value={form.openingBalance}
-            onChange={(e) => setForm({ ...form, openingBalance: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, openingBalance: e.target.value })
+            }
             placeholder="0.00"
           />
         </FormField>

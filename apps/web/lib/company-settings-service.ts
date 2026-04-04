@@ -1,25 +1,21 @@
-"use server"
-
-import { revalidatePath } from "next/cache"
-import { seedCompanyDefaults } from "@workspace/db/seeds/company-defaults"
 import {
-  addCompanyOwnerMembership,
   disableCompanyAndMemberships,
   getCompanySettingsRecord,
   getCompanySlugById,
   getFallbackActiveCompany,
+  getSampleDataSeedProgress,
   getTargetCompanyMembership,
   listActiveAccessibleCompanies,
-  getSampleDataSeedProgress,
   seedSampleData,
   type SampleDataSeedProgress,
   updateManagedCompany as updateManagedCompanyRecord,
 } from "@workspace/db"
+import { revalidatePath } from "next/cache"
 import { requireCompanyAccess } from "@/lib/company-access"
 import { requireSession } from "@/lib/auth-server"
-import { createCompanyRecord } from "@/lib/company-slug"
+import { createCompanyForUser } from "@/lib/company-creation"
 
-type ActionResult = {
+export type ActionResult = {
   ok: boolean
   message: string
   redirectCompanySlug?: string
@@ -49,7 +45,7 @@ async function getTargetMembership(userId: string, targetCompanyId: string) {
   return membership
 }
 
-export async function createCompanyFromSettings(
+export async function createManagedCompany(
   currentCompanySlug: string,
   input: {
     name: string
@@ -60,26 +56,11 @@ export async function createCompanyFromSettings(
     await requireCompanyAccess(currentCompanySlug)
   const session = await requireSession()
 
-  const name = input.name.trim()
-  const displayName = input.displayName?.trim() || null
-
-  if (!name) {
-    return { ok: false, message: "Company name is required." }
-  }
-
-  const company = await createCompanyRecord({
-    name,
-    displayName,
-    createdBy: session.user.id,
+  const company = await createCompanyForUser(session.user.id, {
+    name: input.name,
+    displayName: input.displayName,
+    seedDefaults: true,
   })
-
-  if (!company) {
-    return { ok: false, message: "Failed to create company." }
-  }
-
-  await addCompanyOwnerMembership(company.id, session.user.id)
-
-  await seedCompanyDefaults(company.id)
 
   revalidatePath(`/${currentCompany.slug}/settings`)
 
@@ -91,7 +72,7 @@ export async function createCompanyFromSettings(
   }
 }
 
-export async function updateManagedCompany(
+export async function updateManagedCompanySettings(
   currentCompanySlug: string,
   targetCompanyId: string,
   input: {
@@ -141,7 +122,7 @@ export async function updateManagedCompany(
   return { ok: true, message: "Company updated successfully." }
 }
 
-export async function disableManagedCompany(
+export async function disableManagedCompanySettings(
   currentCompanySlug: string,
   targetCompanyId: string
 ): Promise<ActionResult> {
@@ -187,7 +168,7 @@ export async function disableManagedCompany(
   }
 }
 
-export async function seedSampleDataAction(
+export async function seedCompanySampleData(
   companySlug: string
 ): Promise<ActionResult> {
   const { session, company, membership } =
@@ -209,5 +190,22 @@ export async function seedSampleDataAction(
   return {
     ...result,
     sampleDataSeedProgress: getSampleDataSeedProgress(companyRow?.settings),
+  }
+}
+
+export async function getCompanySampleDataStatus(companySlug: string) {
+  const { company } = await requireCompanyAccess(companySlug)
+  const companyRow = await getCompanySettingsRecord(company.id)
+
+  const settings =
+    companyRow?.settings && typeof companyRow.settings === "object"
+      ? (companyRow.settings as Record<string, unknown>)
+      : {}
+
+  return {
+    sampleDataSeeded: settings.sampleDataSeeded === true,
+    progress: getSampleDataSeedProgress(
+      companyRow?.settings
+    ) as SampleDataSeedProgress | null,
   }
 }

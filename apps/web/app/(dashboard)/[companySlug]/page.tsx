@@ -1,4 +1,4 @@
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getCompanyDashboardData } from "@/lib/server-api"
 
 export default async function CompanyDashboardPage({
   params,
@@ -6,7 +6,7 @@ export default async function CompanyDashboardPage({
   params: Promise<{ companySlug: string }>
 }) {
   const { companySlug } = await params
-  const { membership } = await requireCompanyAccess(companySlug)
+  const { membership } = await getCompanyDashboardData(companySlug)
 
   return (
     <div>

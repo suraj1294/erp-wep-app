@@ -1,5 +1,4 @@
-import { listAccountGroups, listAccounts } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getChartOfAccountsData } from "@/lib/server-api"
 import { ChartOfAccountsClient } from "./chart-of-accounts-client"
 
 export default async function AccountsPage({
@@ -8,12 +7,7 @@ export default async function AccountsPage({
   params: Promise<{ companySlug: string }>
 }) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const [groups, accountsList] = await Promise.all([
-    listAccountGroups(company.id),
-    listAccounts(company.id),
-  ])
+  const { groups, accounts } = await getChartOfAccountsData(companySlug)
 
   return (
     <div className="p-6">
@@ -32,7 +26,7 @@ export default async function AccountsPage({
             seeded when the company is created.
           </div>
         ) : (
-          <ChartOfAccountsClient groups={groups} accounts={accountsList} />
+          <ChartOfAccountsClient groups={groups} accounts={accounts} />
         )}
       </div>
     </div>

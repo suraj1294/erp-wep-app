@@ -1,5 +1,4 @@
-import { listParties } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getMasterResourceData } from "@/lib/server-api"
 import { PartiesClient } from "./parties-client"
 
 interface PageProps {
@@ -8,13 +7,11 @@ interface PageProps {
 
 export default async function PartiesPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const partiesList = await listParties(company.id)
+  const partiesList = await getMasterResourceData(companySlug, "parties")
 
   return (
     <div className="p-6">
-      <PartiesClient companySlug={company.slug} initialParties={partiesList} />
+      <PartiesClient companySlug={companySlug} initialParties={partiesList} />
     </div>
   )
 }

@@ -1,5 +1,4 @@
-import { listBankingVouchersForClass } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getBankingData } from "@/lib/server-api"
 import { BankingListClient } from "./banking-list-client"
 
 interface PageProps {
@@ -8,17 +7,12 @@ interface PageProps {
 
 export default async function BankingPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const [payments, receipts, contras] = await Promise.all([
-    listBankingVouchersForClass(company.id, "payment"),
-    listBankingVouchersForClass(company.id, "receipt"),
-    listBankingVouchersForClass(company.id, "contra"),
-  ])
+  const { payments, receipts, contras, companySlug: resolvedCompanySlug } =
+    await getBankingData(companySlug)
 
   return (
     <BankingListClient
-      companySlug={company.slug}
+      companySlug={resolvedCompanySlug}
       payments={payments}
       receipts={receipts}
       contras={contras}

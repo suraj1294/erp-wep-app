@@ -1,5 +1,4 @@
-import { listLocations } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getMasterResourceData } from "@/lib/server-api"
 import { LocationsClient } from "./locations-client"
 
 interface PageProps {
@@ -8,13 +7,14 @@ interface PageProps {
 
 export default async function LocationsPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const locationsList = await listLocations(company.id)
+  const locationsList = await getMasterResourceData(companySlug, "locations")
 
   return (
     <div className="p-6">
-      <LocationsClient companySlug={company.slug} initialLocations={locationsList} />
+      <LocationsClient
+        companySlug={companySlug}
+        initialLocations={locationsList}
+      />
     </div>
   )
 }

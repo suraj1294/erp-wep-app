@@ -1,5 +1,4 @@
-import { listVoucherRowsByClass } from "@workspace/db"
-import { requireCompanyAccess } from "@/lib/company-access"
+import { getVoucherListData } from "@/lib/server-api"
 import { VoucherListTable } from "@/components/vouchers/voucher-list-table"
 
 interface PageProps {
@@ -8,17 +7,18 @@ interface PageProps {
 
 export default async function SalesPage({ params }: PageProps) {
   const { companySlug } = await params
-  const { company } = await requireCompanyAccess(companySlug)
-
-  const rows = await listVoucherRowsByClass(company.id, "sales")
+  const { rows, companySlug: resolvedCompanySlug } = await getVoucherListData(
+    companySlug,
+    "sales"
+  )
 
   return (
     <VoucherListTable
       title="Sales Invoices"
       rows={rows}
-      newHref={`/${company.slug}/sales/new`}
+      newHref={`/${resolvedCompanySlug}/sales/new`}
       newLabel="New Invoice"
-      basePath={`/${company.slug}/sales`}
+      basePath={`/${resolvedCompanySlug}/sales`}
     />
   )
 }

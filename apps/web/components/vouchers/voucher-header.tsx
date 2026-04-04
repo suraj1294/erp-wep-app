@@ -56,7 +56,11 @@ export function VoucherHeader({
         <label className="text-xs font-medium text-muted-foreground">
           Voucher #
         </label>
-        <Input value={voucherNumber} readOnly className="bg-muted/30 font-mono" />
+        <Input
+          value={voucherNumber}
+          readOnly
+          className="bg-muted/30 font-mono"
+        />
       </div>
 
       {/* Date — always shown */}
@@ -102,7 +106,12 @@ export function VoucherHeader({
       {(isItemBased || voucherClass === "journal") && (
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">
-            Party{isItemBased ? <span className="text-destructive"> *</span> : " (optional)"}
+            Party
+            {isItemBased ? (
+              <span className="text-destructive"> *</span>
+            ) : (
+              " (optional)"
+            )}
           </label>
           <PartyCombobox
             options={parties}

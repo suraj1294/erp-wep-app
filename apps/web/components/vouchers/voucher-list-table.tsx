@@ -3,7 +3,12 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon, EyeIcon, PencilEdit01Icon, Cancel01Icon } from "@hugeicons/core-free-icons"
+import {
+  Add01Icon,
+  EyeIcon,
+  PencilEdit01Icon,
+  Cancel01Icon,
+} from "@hugeicons/core-free-icons"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import {
@@ -47,7 +52,10 @@ function statusBadge(status: string | null) {
   if (status === "cancelled")
     return <Badge variant="destructive">Cancelled</Badge>
   return (
-    <Badge variant="secondary" className="bg-green-100 text-green-800 hover:bg-green-100">
+    <Badge
+      variant="secondary"
+      className="bg-green-100 text-green-800 hover:bg-green-100"
+    >
       Active
     </Badge>
   )
@@ -116,7 +124,9 @@ export function VoucherListTable({
                   <TableCell className="font-mono text-xs font-medium">
                     {row.voucherNumber}
                   </TableCell>
-                  <TableCell className="text-xs">{row.partyName ?? "—"}</TableCell>
+                  <TableCell className="text-xs">
+                    {row.partyName ?? "—"}
+                  </TableCell>
                   <TableCell className="text-right font-mono text-xs">
                     ₹{" "}
                     {parseFloat(row.totalAmount).toLocaleString("en-IN", {
@@ -139,14 +149,20 @@ export function VoucherListTable({
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                           <Link href={`${basePath}/${row.id}`}>
-                            <HugeiconsIcon icon={EyeIcon} className="size-3.5" />
+                            <HugeiconsIcon
+                              icon={EyeIcon}
+                              className="size-3.5"
+                            />
                             View
                           </Link>
                         </DropdownMenuItem>
                         {row.status !== "cancelled" && (
                           <DropdownMenuItem asChild>
                             <Link href={`${basePath}/${row.id}/edit`}>
-                              <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
+                              <HugeiconsIcon
+                                icon={PencilEdit01Icon}
+                                className="size-3.5"
+                              />
                               Edit
                             </Link>
                           </DropdownMenuItem>
@@ -156,7 +172,10 @@ export function VoucherListTable({
                             onClick={() => onCancel(row.id)}
                             className="text-destructive"
                           >
-                            <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
+                            <HugeiconsIcon
+                              icon={Cancel01Icon}
+                              className="size-3.5"
+                            />
                             Cancel
                           </DropdownMenuItem>
                         )}

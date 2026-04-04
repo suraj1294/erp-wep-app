@@ -1,37 +1,29 @@
 import { NextResponse } from "next/server"
-import { addCompanyOwnerMembership } from "@workspace/db"
 import { requireSession } from "@/lib/auth-server"
-import { createCompanyRecord } from "@/lib/company-slug"
+import { createCompanyForUser } from "@/lib/company-creation"
+import { handleRouteError, jsonError } from "@/lib/api-response"
 
 export async function POST(request: Request) {
   try {
     const session = await requireSession()
     const body = await request.json()
-    const { name, displayName } = body
+    const { name, displayName, parties, items, locations, seedDefaults } = body
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Company name is required" },
-        { status: 400 }
-      )
+      return jsonError("Company name is required", 400)
     }
 
-    const company = await createCompanyRecord({
+    const company = await createCompanyForUser(session.user.id, {
       name,
       displayName,
-      createdBy: session.user.id,
+      parties,
+      items,
+      locations,
+      seedDefaults: seedDefaults === true,
     })
-
-    await addCompanyOwnerMembership(company.id, session.user.id)
 
     return NextResponse.json(company)
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    return NextResponse.json(
-      { error: "Failed to create company" },
-      { status: 500 }
-    )
+    return handleRouteError(error, "Failed to create company.")
   }
 }

@@ -5,7 +5,7 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Separator } from "@workspace/ui/components/separator"
-import { getVoucherDetail } from "@/app/(dashboard)/[companySlug]/vouchers/actions"
+import { getVoucherDetailData } from "@/lib/server-api"
 
 interface PageProps {
   params: Promise<{ companySlug: string; voucherId: string }>
@@ -13,7 +13,7 @@ interface PageProps {
 
 export default async function SalesVoucherPage({ params }: PageProps) {
   const { companySlug, voucherId } = await params
-  const voucher = await getVoucherDetail(companySlug, voucherId)
+  const voucher = await getVoucherDetailData(companySlug, voucherId)
 
   if (!voucher) notFound()
 
@@ -73,7 +73,9 @@ export default async function SalesVoucherPage({ params }: PageProps) {
           <p>{voucher.partyName ?? "—"}</p>
         </div>
         <div>
-          <p className="text-xs font-medium text-muted-foreground">Reference #</p>
+          <p className="text-xs font-medium text-muted-foreground">
+            Reference #
+          </p>
           <p>{voucher.referenceNumber ?? "—"}</p>
         </div>
         <div>
@@ -82,7 +84,9 @@ export default async function SalesVoucherPage({ params }: PageProps) {
         </div>
         {voucher.narration && (
           <div className="col-span-full">
-            <p className="text-xs font-medium text-muted-foreground">Narration</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Narration
+            </p>
             <p>{voucher.narration}</p>
           </div>
         )}
@@ -152,8 +156,11 @@ export default async function SalesVoucherPage({ params }: PageProps) {
       <div className="flex justify-end">
         <div className="rounded-lg border bg-muted/30 px-6 py-3 text-sm">
           <span className="text-muted-foreground">Total Amount: </span>
-          <span className="font-semibold font-mono">
-            ₹ {parseFloat(voucher.totalAmount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          <span className="font-mono font-semibold">
+            ₹{" "}
+            {parseFloat(voucher.totalAmount).toLocaleString("en-IN", {
+              minimumFractionDigits: 2,
+            })}
           </span>
         </div>
       </div>

@@ -1,15 +1,15 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import type { ComponentProps } from "react"
+import { useMemo, useState, useTransition, type FormEvent } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Button } from "@workspace/ui/components/button"
 import { CardContent, CardFooter } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Separator } from "@workspace/ui/components/separator"
 import { CreateCompanySubmitButton } from "@/components/create-company-submit-button"
-
-type ActionProp = ComponentProps<"form">["action"]
+import { createCompany } from "@/lib/api/companies"
 
 type PartyDraft = {
   id: string
@@ -130,7 +130,9 @@ function StepBadge({
   )
 }
 
-export function CreateCompanyWizard({ action }: { action: ActionProp }) {
+export function CreateCompanyWizard() {
+  const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [company, setCompany] = useState({
     name: "",
@@ -145,7 +147,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
   const currentMeta = STEP_META[currentStep]
   const isLastStep = currentStepIndex === STEP_ORDER.length - 1
   const companyNameError =
-    companyNameTouched && !company.name.trim() ? "Company name is required." : ""
+    companyNameTouched && !company.name.trim()
+      ? "Company name is required."
+      : ""
 
   const partyPayload = useMemo(
     () =>
@@ -216,22 +220,58 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
 
   function updateParty(id: string, field: keyof PartyDraft, value: string) {
     setParties((current) =>
-      current.map((party) => (party.id === id ? { ...party, [field]: value } : party))
+      current.map((party) =>
+        party.id === id ? { ...party, [field]: value } : party
+      )
     )
   }
 
   function updateItem(id: string, field: keyof ItemDraft, value: string) {
     setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, [field]: value } : item))
+      current.map((item) =>
+        item.id === id ? { ...item, [field]: value } : item
+      )
     )
   }
 
-  function updateLocation(id: string, field: keyof LocationDraft, value: string) {
+  function updateLocation(
+    id: string,
+    field: keyof LocationDraft,
+    value: string
+  ) {
     setLocations((current) =>
       current.map((location) =>
         location.id === id ? { ...location, [field]: value } : location
       )
     )
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setCompanyNameTouched(true)
+
+    if (!company.name.trim()) {
+      return
+    }
+
+    startTransition(async () => {
+      try {
+        const createdCompany = await createCompany({
+          name: company.name,
+          displayName: company.displayName,
+          parties: JSON.parse(partyPayload),
+          items: JSON.parse(itemPayload),
+          locations: JSON.parse(locationPayload),
+          seedDefaults: true,
+        })
+
+        router.push(`/${createdCompany.slug}`)
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to create company."
+        )
+      }
+    })
   }
 
   function renderCompanyStep() {
@@ -246,7 +286,10 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
             placeholder="Acme Corporation"
             value={company.name}
             onChange={(event) =>
-              setCompany((current) => ({ ...current, name: event.target.value }))
+              setCompany((current) => ({
+                ...current,
+                name: event.target.value,
+              }))
             }
             onBlur={() => setCompanyNameTouched(true)}
             required
@@ -257,7 +300,8 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="displayName">
-            Display Name <span className="text-muted-foreground">(optional)</span>
+            Display Name{" "}
+            <span className="text-muted-foreground">(optional)</span>
           </Label>
           <Input
             id="displayName"
@@ -290,7 +334,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setParties((current) => current.filter((entry) => entry.id !== party.id))
+                    setParties((current) =>
+                      current.filter((entry) => entry.id !== party.id)
+                    )
                   }
                 >
                   Remove
@@ -302,7 +348,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <Label>Party Name</Label>
                 <Input
                   value={party.name}
-                  onChange={(event) => updateParty(party.id, "name", event.target.value)}
+                  onChange={(event) =>
+                    updateParty(party.id, "name", event.target.value)
+                  }
                   placeholder="Acme Customer"
                 />
               </div>
@@ -321,7 +369,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <select
                   className="flex h-9 w-full rounded-md border border-input bg-input/20 px-3 py-2 text-sm outline-none"
                   value={party.type}
-                  onChange={(event) => updateParty(party.id, "type", event.target.value)}
+                  onChange={(event) =>
+                    updateParty(party.id, "type", event.target.value)
+                  }
                 >
                   <option value="customer">Customer</option>
                   <option value="supplier">Supplier</option>
@@ -332,7 +382,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <Label>Phone</Label>
                 <Input
                   value={party.phone}
-                  onChange={(event) => updateParty(party.id, "phone", event.target.value)}
+                  onChange={(event) =>
+                    updateParty(party.id, "phone", event.target.value)
+                  }
                   placeholder="+91 98765 43210"
                 />
               </div>
@@ -340,14 +392,20 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <Label>Email</Label>
                 <Input
                   value={party.email}
-                  onChange={(event) => updateParty(party.id, "email", event.target.value)}
+                  onChange={(event) =>
+                    updateParty(party.id, "email", event.target.value)
+                  }
                   placeholder="billing@example.com"
                 />
               </div>
             </div>
           </div>
         ))}
-        <Button type="button" variant="outline" onClick={() => setParties((current) => [...current, emptyParty()])}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setParties((current) => [...current, emptyParty()])}
+        >
           Add Another Party
         </Button>
       </div>
@@ -367,7 +425,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setItems((current) => current.filter((entry) => entry.id !== item.id))
+                    setItems((current) =>
+                      current.filter((entry) => entry.id !== item.id)
+                    )
                   }
                 >
                   Remove
@@ -379,7 +439,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <Label>Item Name</Label>
                 <Input
                   value={item.name}
-                  onChange={(event) => updateItem(item.id, "name", event.target.value)}
+                  onChange={(event) =>
+                    updateItem(item.id, "name", event.target.value)
+                  }
                   placeholder="Standard Widget"
                 />
               </div>
@@ -387,7 +449,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <Label>Code</Label>
                 <Input
                   value={item.code}
-                  onChange={(event) => updateItem(item.id, "code", event.target.value)}
+                  onChange={(event) =>
+                    updateItem(item.id, "code", event.target.value)
+                  }
                   placeholder="WGT-001"
                 />
               </div>
@@ -395,7 +459,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
                 <Label>Sales Rate</Label>
                 <Input
                   value={item.salesRate}
-                  onChange={(event) => updateItem(item.id, "salesRate", event.target.value)}
+                  onChange={(event) =>
+                    updateItem(item.id, "salesRate", event.target.value)
+                  }
                   placeholder="120.00"
                 />
               </div>
@@ -412,7 +478,11 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
             </div>
           </div>
         ))}
-        <Button type="button" variant="outline" onClick={() => setItems((current) => [...current, emptyItem()])}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => setItems((current) => [...current, emptyItem()])}
+        >
           Add Another Item
         </Button>
       </div>
@@ -478,7 +548,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
         <Button
           type="button"
           variant="outline"
-          onClick={() => setLocations((current) => [...current, emptyLocation()])}
+          onClick={() =>
+            setLocations((current) => [...current, emptyLocation()])
+          }
         >
           Add Another Location
         </Button>
@@ -487,13 +559,7 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
   }
 
   return (
-    <form action={action}>
-      <input type="hidden" name="name" value={company.name} />
-      <input type="hidden" name="displayName" value={company.displayName} />
-      <input type="hidden" name="parties" value={partyPayload} />
-      <input type="hidden" name="items" value={itemPayload} />
-      <input type="hidden" name="locations" value={locationPayload} />
-
+    <form onSubmit={handleSubmit}>
       <CardContent className="space-y-6">
         <div className="grid gap-3 md:grid-cols-4">
           {STEP_ORDER.map((step, index) => (
@@ -511,7 +577,9 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
 
         <div className="space-y-2">
           <p className="text-lg font-semibold">{currentMeta.title}</p>
-          <p className="text-sm text-muted-foreground">{currentMeta.description}</p>
+          <p className="text-sm text-muted-foreground">
+            {currentMeta.description}
+          </p>
         </div>
 
         {currentStep === "company" && renderCompanyStep()}
@@ -552,6 +620,7 @@ export function CreateCompanyWizard({ action }: { action: ActionProp }) {
             idleLabel="Create Company"
             pendingLabel="Creating company..."
             className="w-full sm:w-auto"
+            pending={isPending}
           />
         )}
       </CardFooter>

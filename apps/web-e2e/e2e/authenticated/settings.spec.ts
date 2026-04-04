@@ -180,10 +180,13 @@ async function waitForSampleDataStatus(
     .poll(
       async () =>
         page.evaluate(async (slug) => {
-          const response = await fetch(`/${slug}/settings/sample-data-status`, {
-            cache: "no-store",
-            credentials: "same-origin",
-          })
+          const response = await fetch(
+            `/api/companies/${encodeURIComponent(slug)}/settings/sample-data`,
+            {
+              cache: "no-store",
+              credentials: "same-origin",
+            }
+          )
 
           if (!response.ok) {
             return `http-${response.status}`

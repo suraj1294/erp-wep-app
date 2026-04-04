@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "@workspace/ui/components/sonner"
 import { Input } from "@workspace/ui/components/input"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Switch } from "@workspace/ui/components/switch"
@@ -10,7 +12,11 @@ import { MasterDialog } from "@/components/masters/master-dialog"
 import { MasterDeleteDialog } from "@/components/masters/master-delete-dialog"
 import { FormField } from "@/components/masters/form-field"
 import { StatusBadge } from "@/components/masters/status-badge"
-import { createLocation, updateLocation, deleteLocation } from "./actions"
+import {
+  createLocation,
+  updateLocation,
+  deleteLocation,
+} from "@/lib/api/masters"
 
 export interface LocationRow {
   id: string
@@ -50,7 +56,11 @@ const defaultForm: FormState = {
   isDefault: false,
 }
 
-export function LocationsClient({ companySlug, initialLocations }: LocationsClientProps) {
+export function LocationsClient({
+  companySlug,
+  initialLocations,
+}: LocationsClientProps) {
+  const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [editing, setEditing] = useState<LocationRow | null>(null)
@@ -95,28 +105,42 @@ export function LocationsClient({ companySlug, initialLocations }: LocationsClie
   function handleSubmit() {
     if (!validate()) return
     startTransition(async () => {
-      const data = {
-        name: form.name.trim(),
-        code: form.code.trim() || undefined,
-        address: form.address.trim() || undefined,
-        contactPerson: form.contactPerson.trim() || undefined,
-        phone: form.phone.trim() || undefined,
-        isDefault: form.isDefault,
+      try {
+        const data = {
+          name: form.name.trim(),
+          code: form.code.trim() || undefined,
+          address: form.address.trim() || undefined,
+          contactPerson: form.contactPerson.trim() || undefined,
+          phone: form.phone.trim() || undefined,
+          isDefault: form.isDefault,
+        }
+        if (editing) {
+          await updateLocation(companySlug, editing.id, data)
+        } else {
+          await createLocation(companySlug, data)
+        }
+        setDialogOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to save location."
+        )
       }
-      if (editing) {
-        await updateLocation(companySlug, editing.id, data)
-      } else {
-        await createLocation(companySlug, data)
-      }
-      setDialogOpen(false)
     })
   }
 
   function handleDeleteConfirm() {
     if (!deleting) return
     startTransition(async () => {
-      await deleteLocation(companySlug, deleting.id)
-      setDeleteOpen(false)
+      try {
+        await deleteLocation(companySlug, deleting.id)
+        setDeleteOpen(false)
+        router.refresh()
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : "Failed to delete location."
+        )
+      }
     })
   }
 
@@ -130,11 +154,14 @@ export function LocationsClient({ companySlug, initialLocations }: LocationsClie
       label: "Default",
       render: (value: unknown) =>
         value ? (
-          <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-200">
+          <Badge
+            variant="outline"
+            className="border-blue-200 bg-blue-500/10 text-blue-600"
+          >
             Yes
           </Badge>
         ) : (
-          <span className="text-muted-foreground text-sm">No</span>
+          <span className="text-sm text-muted-foreground">No</span>
         ),
     },
     {
@@ -188,7 +215,9 @@ export function LocationsClient({ companySlug, initialLocations }: LocationsClie
         <FormField label="Contact Person">
           <Input
             value={form.contactPerson}
-            onChange={(e) => setForm({ ...form, contactPerson: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, contactPerson: e.target.value })
+            }
             placeholder="Contact person name"
           />
         </FormField>
@@ -202,7 +231,9 @@ export function LocationsClient({ companySlug, initialLocations }: LocationsClie
         <FormField label="Set as Default">
           <Switch
             checked={form.isDefault}
-            onCheckedChange={(checked) => setForm({ ...form, isDefault: checked })}
+            onCheckedChange={(checked) =>
+              setForm({ ...form, isDefault: checked })
+            }
           />
         </FormField>
       </MasterDialog>
