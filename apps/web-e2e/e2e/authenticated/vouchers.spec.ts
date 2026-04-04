@@ -59,6 +59,49 @@ const FIXTURE_NAMES = {
   item: `E2E Widget ${Date.now()}`,
 }
 
+const EDIT_FIXTURES = {
+  sales: {
+    reference: `SALES-EDIT-${Date.now()}`,
+    description: "Updated sales line",
+    narration: "Updated sales narration",
+  },
+  purchase: {
+    reference: `PUR-EDIT-${Date.now()}`,
+    description: "Updated purchase line",
+    narration: "Updated purchase narration",
+  },
+  creditNote: {
+    reference: `CN-EDIT-${Date.now()}`,
+    description: "Updated credit note line",
+    narration: "Updated credit note narration",
+  },
+  debitNote: {
+    reference: `DN-EDIT-${Date.now()}`,
+    description: "Updated debit note line",
+    narration: "Updated debit note narration",
+  },
+  payment: {
+    reference: `PMT-EDIT-${Date.now()}`,
+    description: "Updated payment line",
+    narration: "Updated payment narration",
+  },
+  receipt: {
+    reference: `RCT-EDIT-${Date.now()}`,
+    description: "Updated receipt line",
+    narration: "Updated receipt narration",
+  },
+  contra: {
+    reference: `CON-EDIT-${Date.now()}`,
+    description: "Updated contra line",
+    narration: "Updated contra narration",
+  },
+  journal: {
+    reference: `JNL-EDIT-${Date.now()}`,
+    description: "Updated journal line",
+    narration: "Updated journal narration",
+  },
+}
+
 async function createVoucherFixtureCompany() {
   const [owner] = await db
     .select({ id: user.id })
@@ -225,10 +268,9 @@ async function selectCommandOption(
 
 async function saveVoucher(page: Page, expectedPath: string) {
   await formArea(page).getByRole("button", { name: /^Save$/ }).first().click()
-  await page.waitForURL(
-    (url) => url.pathname === expectedPath,
-    { timeout: 30_000 }
-  )
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 30_000 })
+    .toBe(expectedPath)
 }
 
 async function expectVoucherCreated(
@@ -243,7 +285,171 @@ async function expectVoucherCreated(
   }
 }
 
+async function openVoucherEditPage(
+  page: Page,
+  companySlug: string,
+  listPath: string,
+  voucherNumber: string,
+  editHeading: string
+) {
+  await ensureVoucherExists(page, companySlug, listPath, voucherNumber)
+  await page.goto(listPath)
+  const row = page
+    .locator("tbody tr")
+    .filter({
+      has: page.getByRole("cell", { name: voucherNumber, exact: true }),
+    })
+    .first()
+  await expect(row).toBeVisible()
+  const detailLink = row.getByRole("link", { name: voucherNumber, exact: true })
+  const detailHref = await detailLink.getAttribute("href")
+  expect(detailHref).toBeTruthy()
+  await page.goto(detailHref!, { waitUntil: "domcontentloaded" })
+  await expect(page.getByRole("heading", { name: voucherNumber })).toBeVisible()
+  const editLink = page.getByRole("link", { name: "Edit", exact: true })
+  await expect(editLink).toBeVisible()
+  const href = await editLink.getAttribute("href")
+  expect(href).toBeTruthy()
+  await page.goto(href!, { waitUntil: "domcontentloaded" })
+  await expect
+    .poll(() => new URL(page.url()).pathname, { timeout: 15_000 })
+    .toMatch(/\/edit$/)
+  await expect(page.getByRole("heading", { name: editHeading })).toBeVisible()
+  await expect(
+    formArea(page).getByRole("button", { name: "Save Changes" }).first()
+  ).toBeVisible()
+}
+
+async function saveEditedVoucher(page: Page, expectedPathFragment: string) {
+  await formArea(page)
+    .getByRole("button", { name: "Save Changes" })
+    .first()
+    .click()
+  await expect
+    .poll(() => {
+      const pathname = new URL(page.url()).pathname
+      return (
+        pathname.includes(expectedPathFragment) && !pathname.endsWith("/edit")
+      )
+    }, { timeout: 30_000 })
+    .toBe(true)
+}
+
+async function updateCommonVoucherFields(
+  page: Page,
+  reference: string,
+  description: string,
+  narration: string
+) {
+  await page.getByPlaceholder("e.g. PO-001").fill(reference)
+  await page.getByPlaceholder("Description").first().fill(description)
+  await page.getByPlaceholder("Optional description / memo").fill(narration)
+}
+
+async function ensureVoucherExists(
+  page: Page,
+  companySlug: string,
+  listPath: string,
+  voucherNumber: string
+) {
+  await page.goto(listPath)
+
+  const voucherCell = page.getByRole("cell", {
+    name: voucherNumber,
+    exact: true,
+  })
+
+  const exists = await voucherCell
+    .waitFor({ state: "visible", timeout: 2_000 })
+    .then(() => true)
+    .catch(() => false)
+
+  if (exists) {
+    return
+  }
+
+  switch (voucherNumber) {
+    case "INV-0001": {
+      await page.goto(`/${companySlug}/sales/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.customerParty)
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
+      await saveVoucher(page, `/${companySlug}/sales`)
+      break
+    }
+    case "BILL-0001": {
+      await page.goto(`/${companySlug}/purchase/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.supplierParty)
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
+      await saveVoucher(page, `/${companySlug}/purchase`)
+      break
+    }
+    case "CN-0001": {
+      await page.goto(`/${companySlug}/credit-notes/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.customerParty)
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
+      await saveVoucher(page, `/${companySlug}/credit-notes`)
+      break
+    }
+    case "DN-0001": {
+      await page.goto(`/${companySlug}/debit-notes/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.supplierParty)
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.item)
+      await saveVoucher(page, `/${companySlug}/debit-notes`)
+      break
+    }
+    case "PMT-0001": {
+      await page.goto(`/${companySlug}/banking/payment/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.bankAccount)
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.supplierAccount)
+      await formArea(page).locator('input[type="number"]').first().fill("50")
+      await saveVoucher(page, `/${companySlug}/banking`)
+      break
+    }
+    case "RCT-0001": {
+      await page.goto(`/${companySlug}/banking/receipt/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.bankAccount)
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.customerAccount)
+      await formArea(page).locator('input[type="number"]').first().fill("60")
+      await saveVoucher(page, `/${companySlug}/banking`)
+      break
+    }
+    case "CON-0001": {
+      await page.goto(`/${companySlug}/banking/contra/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), "Cash")
+      await selectCommandOption(page, combos.nth(1), FIXTURE_NAMES.bankAccount)
+      const nums = formArea(page).locator('input[type="number"]')
+      await nums.nth(0).fill("100")
+      await nums.nth(3).fill("100")
+      await saveVoucher(page, `/${companySlug}/banking`)
+      break
+    }
+    case "JNL-0001": {
+      await page.goto(`/${companySlug}/journal/new`)
+      const combos = voucherComboboxes(page)
+      await selectCommandOption(page, combos.nth(0), FIXTURE_NAMES.customerParty)
+      await selectCommandOption(page, combos.nth(1), "Purchase")
+      await selectCommandOption(page, combos.nth(2), "Sales")
+      const nums = formArea(page).locator('input[type="number"]')
+      await nums.nth(0).fill("75")
+      await nums.nth(3).fill("75")
+      await saveVoucher(page, `/${companySlug}/journal`)
+      break
+    }
+    default:
+      throw new Error(`Unsupported voucher bootstrap for ${voucherNumber}`)
+  }
+}
+
 test.describe("Voucher create flows", () => {
+  test.describe.configure({ timeout: 90_000 })
+
   let companyId: string
   let companySlug: string
 
@@ -364,5 +570,165 @@ test.describe("Voucher create flows", () => {
 
     await saveVoucher(page, `/${companySlug}/journal`)
     await expectVoucherCreated(page, "JNL-0001")
+  })
+
+  test("edits a sales invoice from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/sales`,
+      "INV-0001",
+      "Edit Sales Invoice"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.sales.reference,
+      EDIT_FIXTURES.sales.description,
+      EDIT_FIXTURES.sales.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/sales/`)
+    await expect(page.getByText(EDIT_FIXTURES.sales.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.sales.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.sales.narration)).toBeVisible()
+  })
+
+  test("edits a purchase bill from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/purchase`,
+      "BILL-0001",
+      "Edit Purchase Bill"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.purchase.reference,
+      EDIT_FIXTURES.purchase.description,
+      EDIT_FIXTURES.purchase.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/purchase/`)
+    await expect(page.getByText(EDIT_FIXTURES.purchase.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.purchase.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.purchase.narration)).toBeVisible()
+  })
+
+  test("edits a credit note from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/credit-notes`,
+      "CN-0001",
+      "Edit Credit Note"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.creditNote.reference,
+      EDIT_FIXTURES.creditNote.description,
+      EDIT_FIXTURES.creditNote.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/credit-notes/`)
+    await expect(page.getByText(EDIT_FIXTURES.creditNote.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.creditNote.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.creditNote.narration)).toBeVisible()
+  })
+
+  test("edits a debit note from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/debit-notes`,
+      "DN-0001",
+      "Edit Debit Note"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.debitNote.reference,
+      EDIT_FIXTURES.debitNote.description,
+      EDIT_FIXTURES.debitNote.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/debit-notes/`)
+    await expect(page.getByText(EDIT_FIXTURES.debitNote.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.debitNote.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.debitNote.narration)).toBeVisible()
+  })
+
+  test("edits a payment voucher from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/banking`,
+      "PMT-0001",
+      "Edit Payment"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.payment.reference,
+      EDIT_FIXTURES.payment.description,
+      EDIT_FIXTURES.payment.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/banking/`)
+    await expect(page.getByText(EDIT_FIXTURES.payment.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.payment.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.payment.narration)).toBeVisible()
+  })
+
+  test("edits a receipt voucher from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/banking`,
+      "RCT-0001",
+      "Edit Receipt"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.receipt.reference,
+      EDIT_FIXTURES.receipt.description,
+      EDIT_FIXTURES.receipt.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/banking/`)
+    await expect(page.getByText(EDIT_FIXTURES.receipt.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.receipt.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.receipt.narration)).toBeVisible()
+  })
+
+  test("edits a contra voucher from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/banking`,
+      "CON-0001",
+      "Edit Contra Entry"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.contra.reference,
+      EDIT_FIXTURES.contra.description,
+      EDIT_FIXTURES.contra.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/banking/`)
+    await expect(page.getByText(EDIT_FIXTURES.contra.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.contra.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.contra.narration)).toBeVisible()
+  })
+
+  test("edits a journal voucher from the detail action", async ({ page }) => {
+    await openVoucherEditPage(
+      page,
+      companySlug,
+      `/${companySlug}/journal`,
+      "JNL-0001",
+      "Edit Journal Entry"
+    )
+    await updateCommonVoucherFields(
+      page,
+      EDIT_FIXTURES.journal.reference,
+      EDIT_FIXTURES.journal.description,
+      EDIT_FIXTURES.journal.narration
+    )
+    await saveEditedVoucher(page, `/${companySlug}/journal/`)
+    await expect(page.getByText(EDIT_FIXTURES.journal.reference)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.journal.description)).toBeVisible()
+    await expect(page.getByText(EDIT_FIXTURES.journal.narration)).toBeVisible()
   })
 })

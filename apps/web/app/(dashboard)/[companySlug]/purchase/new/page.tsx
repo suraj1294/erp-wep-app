@@ -1,4 +1,4 @@
-import { getVoucherFormData } from "@/lib/server-api"
+import { getVoucherFormData, type ItemVoucherFormPayload } from "@/lib/server-api"
 import { ItemVoucherForm } from "@/components/vouchers/item-voucher-form"
 
 interface PageProps {
@@ -7,11 +7,14 @@ interface PageProps {
 
 export default async function NewPurchasePage({ params }: PageProps) {
   const { companySlug } = await params
-  const formData = await getVoucherFormData(companySlug, "purchase")
+  const formData = (await getVoucherFormData(
+    companySlug,
+    "purchase"
+  )) as ItemVoucherFormPayload
 
   return (
     <ItemVoucherForm
-      companyId={formData.companyId}
+      companySlug={formData.companySlug}
       voucherClass="purchase"
       voucherTypes={formData.voucherTypes}
       parties={formData.parties}

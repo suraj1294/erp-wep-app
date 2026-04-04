@@ -1,4 +1,4 @@
-import type { CreateVoucherInput } from "@workspace/db"
+import type { CreateVoucherInput, UpdateVoucherInput } from "@workspace/db"
 import { apiRequest } from "@/lib/api-client"
 
 export function createVoucher(companySlug: string, input: CreateVoucherInput) {
@@ -6,6 +6,22 @@ export function createVoucher(companySlug: string, input: CreateVoucherInput) {
     `/api/companies/${encodeURIComponent(companySlug)}/vouchers`,
     {
       method: "POST",
+      body: JSON.stringify(input),
+    }
+  )
+}
+
+export function updateVoucher(
+  companySlug: string,
+  voucherId: string,
+  input: UpdateVoucherInput
+) {
+  return apiRequest<{ voucherId: string; voucherNumber: string }>(
+    `/api/companies/${encodeURIComponent(
+      companySlug
+    )}/vouchers/${encodeURIComponent(voucherId)}`,
+    {
+      method: "PUT",
       body: JSON.stringify(input),
     }
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "@workspace/ui/components/sonner"
 import {
@@ -15,11 +15,12 @@ import { VoucherHeader } from "./voucher-header"
 import { AccountLineItems, useAccountLines } from "./account-line-items"
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
-import { createVoucher } from "@/lib/api/vouchers"
+import { createVoucher, updateVoucher } from "@/lib/api/vouchers"
 import type { VoucherTypeOption } from "./item-voucher-form"
+import type { AccountVoucherInitialValues } from "@/lib/voucher-edit"
 
 interface AccountVoucherFormProps {
-  companyId: string
+  companySlug: string
   voucherClass: "payment" | "receipt" | "journal" | "contra"
   voucherTypes: VoucherTypeOption[]
   parties: PartyOption[]
@@ -30,6 +31,9 @@ interface AccountVoucherFormProps {
   backHref: string
   title: string
   listHref: string
+  voucherId?: string
+  formMode?: "create" | "edit"
+  initialValues?: AccountVoucherInitialValues
 }
 
 function previewNumber(vt: VoucherTypeOption): string {
@@ -40,7 +44,7 @@ function previewNumber(vt: VoucherTypeOption): string {
 const today = new Date().toISOString().slice(0, 10)
 
 export function AccountVoucherForm({
-  companyId,
+  companySlug,
   voucherClass,
   voucherTypes,
   parties,
@@ -49,21 +53,35 @@ export function AccountVoucherForm({
   backHref,
   title,
   listHref,
+  voucherId,
+  formMode = "create",
+  initialValues,
 }: AccountVoucherFormProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
-  const mode = voucherClass as "payment" | "receipt" | "journal" | "contra"
+  const [isSaving, setIsSaving] = useState(false)
+  const lineMode = voucherClass as "payment" | "receipt" | "journal" | "contra"
+  const isEditMode = formMode === "edit"
 
   // Header state
-  const [voucherTypeId, setVoucherTypeId] = useState(voucherTypes[0]?.id ?? "")
-  const [voucherDate, setVoucherDate] = useState(today)
-  const [referenceNumber, setReferenceNumber] = useState("")
-  const [partyId, setPartyId] = useState("")
-  const [balancingAccountId, setBalancingAccountId] = useState("")
-  const [narration, setNarration] = useState("")
+  const [voucherTypeId, setVoucherTypeId] = useState(
+    initialValues?.voucherTypeId ?? voucherTypes[0]?.id ?? ""
+  )
+  const [voucherDate, setVoucherDate] = useState(
+    initialValues?.voucherDate ?? today
+  )
+  const [referenceNumber, setReferenceNumber] = useState(
+    initialValues?.referenceNumber ?? ""
+  )
+  const [partyId, setPartyId] = useState(initialValues?.partyId ?? "")
+  const [balancingAccountId, setBalancingAccountId] = useState(
+    initialValues?.balancingAccountId ?? ""
+  )
+  const [narration, setNarration] = useState(initialValues?.narration ?? "")
 
   // Line items state
-  const [lines, dispatch] = useAccountLines()
+  const [lines, dispatch] = useAccountLines(
+    initialValues?.lines.length ? initialValues.lines : undefined
+  )
 
   const selectedVt = voucherTypes.find((vt) => vt.id === voucherTypeId)
   const isJournal = voucherClass === "journal" || voucherClass === "contra"
@@ -109,56 +127,72 @@ export function AccountVoucherForm({
     return null
   }
 
-  function handleSave(saveAndNew = false) {
+  async function handleSave(saveAndNew = false) {
     const err = validate()
     if (err) {
       toast.error(err)
       return
     }
-    startTransition(async () => {
-      try {
-        const accountLines = lines
-          .filter((l) => l.accountId)
-          .map((l) => ({
-            accountId: l.accountId,
-            description: l.description,
-            amount: parseFloat(l.amount) || 0,
-            debitAmount: isJournal
-              ? parseFloat(l.debitAmount) || 0
-              : parseFloat(l.amount) || 0,
-            creditAmount: isJournal ? parseFloat(l.creditAmount) || 0 : 0,
-          }))
 
-        const result = await createVoucher(companyId, {
-          voucherTypeId,
-          voucherClass,
-          voucherDate,
-          referenceNumber: referenceNumber || undefined,
-          partyId: partyId || undefined,
-          narration: narration || undefined,
-          accountLines,
-          balancingAccountId: balancingAccountId || undefined,
-        })
-        toast.success(`Voucher ${result.voucherNumber} saved.`)
-        if (saveAndNew) {
-          setVoucherDate(today)
-          setReferenceNumber("")
-          setPartyId("")
-          setBalancingAccountId("")
-          setNarration("")
-          dispatch({ type: "REMOVE_ROW", index: 0 })
-          if (isJournal) dispatch({ type: "REMOVE_ROW", index: 0 })
-          dispatch({ type: "ADD_ROW" })
-          if (isJournal) dispatch({ type: "ADD_ROW" })
-        } else {
-          router.push(listHref)
-        }
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to save voucher."
-        )
+    if (isSaving) {
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      const accountLines = lines
+        .filter((l) => l.accountId)
+        .map((l) => ({
+          accountId: l.accountId,
+          description: l.description,
+          amount: parseFloat(l.amount) || 0,
+          debitAmount: isJournal
+            ? parseFloat(l.debitAmount) || 0
+            : parseFloat(l.amount) || 0,
+          creditAmount: isJournal ? parseFloat(l.creditAmount) || 0 : 0,
+        }))
+
+      const payload = {
+        voucherTypeId,
+        voucherClass,
+        voucherDate,
+        referenceNumber: referenceNumber || undefined,
+        partyId: partyId || undefined,
+        narration: narration || undefined,
+        accountLines,
+        balancingAccountId: balancingAccountId || undefined,
       }
-    })
+      const result =
+        isEditMode && voucherId
+          ? await updateVoucher(companySlug, voucherId, payload)
+          : await createVoucher(companySlug, payload)
+      toast.success(
+        isEditMode
+          ? `Voucher ${result.voucherNumber} updated.`
+          : `Voucher ${result.voucherNumber} saved.`
+      )
+      if (saveAndNew && !isEditMode) {
+        setVoucherDate(today)
+        setReferenceNumber("")
+        setPartyId("")
+        setBalancingAccountId("")
+        setNarration("")
+        dispatch({ type: "REMOVE_ROW", index: 0 })
+        if (isJournal) dispatch({ type: "REMOVE_ROW", index: 0 })
+        dispatch({ type: "ADD_ROW" })
+        if (isJournal) dispatch({ type: "ADD_ROW" })
+        setIsSaving(false)
+        return
+      }
+
+      window.location.assign(listHref)
+    } catch (err) {
+      setIsSaving(false)
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save voucher."
+      )
+    }
   }
 
   // Line items for journal/contra use all accounts; for payment/receipt exclude balancing account
@@ -172,13 +206,14 @@ export function AccountVoucherForm({
       backLabel={`Back to ${title}`}
       narration={narration}
       onNarrationChange={setNarration}
-      onSave={() => handleSave(false)}
-      onSaveAndNew={() => handleSave(true)}
+      onSave={() => void handleSave(false)}
+      onSaveAndNew={isEditMode ? undefined : () => void handleSave(true)}
       onCancel={() => router.push(listHref)}
-      isPending={isPending}
+      isPending={isSaving}
+      saveLabel={isEditMode ? "Save Changes" : "Save"}
     >
       {/* Voucher type selector */}
-      {voucherTypes.length > 1 && (
+      {voucherTypes.length > 1 && !isEditMode && (
         <div className="flex max-w-xs flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">
             Voucher Type
@@ -200,7 +235,10 @@ export function AccountVoucherForm({
 
       <VoucherHeader
         voucherClass={voucherClass}
-        voucherNumber={selectedVt ? previewNumber(selectedVt) : "—"}
+        voucherNumber={
+          initialValues?.voucherNumber ??
+          (selectedVt ? previewNumber(selectedVt) : "—")
+        }
         voucherDate={voucherDate}
         onVoucherDateChange={setVoucherDate}
         referenceNumber={referenceNumber}
@@ -219,7 +257,7 @@ export function AccountVoucherForm({
         lines={lines}
         dispatch={dispatch}
         accountOptions={lineAccountOptions}
-        mode={mode}
+        mode={lineMode}
       />
     </VoucherFormShell>
   )

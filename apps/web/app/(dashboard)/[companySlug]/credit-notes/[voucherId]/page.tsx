@@ -42,6 +42,13 @@ export default async function CreditNoteVoucherPage({ params }: PageProps) {
               Active
             </Badge>
           )}
+          {!isCancelled && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/${companySlug}/credit-notes/${voucherId}/edit`}>
+                Edit
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

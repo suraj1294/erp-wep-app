@@ -1,4 +1,4 @@
-import { getVoucherFormData } from "@/lib/server-api"
+import { getVoucherFormData, type ItemVoucherFormPayload } from "@/lib/server-api"
 import { ItemVoucherForm } from "@/components/vouchers/item-voucher-form"
 
 interface PageProps {
@@ -7,11 +7,14 @@ interface PageProps {
 
 export default async function NewDebitNotePage({ params }: PageProps) {
   const { companySlug } = await params
-  const formData = await getVoucherFormData(companySlug, "debit_note")
+  const formData = (await getVoucherFormData(
+    companySlug,
+    "debit_note"
+  )) as ItemVoucherFormPayload
 
   return (
     <ItemVoucherForm
-      companyId={formData.companyId}
+      companySlug={formData.companySlug}
       voucherClass="debit_note"
       voucherTypes={formData.voucherTypes}
       parties={formData.parties}

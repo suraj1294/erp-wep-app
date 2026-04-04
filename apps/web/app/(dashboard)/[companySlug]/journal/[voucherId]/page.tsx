@@ -50,6 +50,11 @@ export default async function JournalVoucherPage({ params }: PageProps) {
               Active
             </Badge>
           )}
+          {!isCancelled && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/${companySlug}/journal/${voucherId}/edit`}>Edit</Link>
+            </Button>
+          )}
         </div>
       </div>
 

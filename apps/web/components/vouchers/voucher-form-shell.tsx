@@ -19,6 +19,7 @@ interface VoucherFormShellProps {
   onSaveAndNew?: () => void
   onCancel: () => void
   isPending?: boolean
+  saveLabel?: string
   children: React.ReactNode
   /** Optional extra content between line items and footer (e.g. summary, ledger preview) */
   footer?: React.ReactNode
@@ -34,6 +35,7 @@ export function VoucherFormShell({
   onSaveAndNew,
   onCancel,
   isPending = false,
+  saveLabel = "Save",
   children,
   footer,
 }: VoucherFormShellProps) {
@@ -70,7 +72,7 @@ export function VoucherFormShell({
             </Button>
           )}
           <Button size="sm" onClick={onSave} disabled={isPending}>
-            {isPending ? "Saving…" : "Save"}
+            {isPending ? "Saving…" : saveLabel}
           </Button>
         </div>
       </div>
@@ -111,7 +113,7 @@ export function VoucherFormShell({
             </Button>
           )}
           <Button size="sm" onClick={onSave} disabled={isPending}>
-            {isPending ? "Saving…" : "Save"}
+            {isPending ? "Saving…" : saveLabel}
           </Button>
         </div>
         <Button

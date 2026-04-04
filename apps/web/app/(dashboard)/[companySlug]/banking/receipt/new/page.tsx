@@ -1,4 +1,4 @@
-import { getVoucherFormData } from "@/lib/server-api"
+import { getVoucherFormData, type AccountVoucherFormPayload } from "@/lib/server-api"
 import { AccountVoucherForm } from "@/components/vouchers/account-voucher-form"
 
 interface PageProps {
@@ -7,11 +7,14 @@ interface PageProps {
 
 export default async function NewReceiptPage({ params }: PageProps) {
   const { companySlug } = await params
-  const formData = await getVoucherFormData(companySlug, "receipt")
+  const formData = (await getVoucherFormData(
+    companySlug,
+    "receipt"
+  )) as AccountVoucherFormPayload
 
   return (
     <AccountVoucherForm
-      companyId={formData.companyId}
+      companySlug={formData.companySlug}
       voucherClass="receipt"
       voucherTypes={formData.voucherTypes}
       parties={formData.parties}

@@ -43,6 +43,21 @@ export interface CreateVoucherInput {
   balancingAccountId?: string
 }
 
+export type UpdateVoucherInput = CreateVoucherInput
+
+type VoucherEntry = {
+  accountId: string | null
+  itemId: string | null
+  description: string
+  quantity: number | null
+  rate: number | null
+  debitAmount: number
+  creditAmount: number
+  lineNumber: number
+}
+
+type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+
 function buildItemBasedEntries(
   input: CreateVoucherInput,
   partyAccountId: string | null,
@@ -122,6 +137,245 @@ function buildItemBasedEntries(
   }
 
   return { entries, grandTotal }
+}
+
+async function buildVoucherState(
+  tx: DbTransaction,
+  companyId: string,
+  input: CreateVoucherInput
+) {
+  let partyAccountId: string | null = null
+  if (input.partyId) {
+    const [party] = await tx
+      .select({ accountId: parties.accountId })
+      .from(parties)
+      .where(and(eq(parties.id, input.partyId), eq(parties.companyId, companyId)))
+
+    partyAccountId = party?.accountId ?? null
+  }
+
+  const [salesAccount] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "SALES")))
+
+  const [purchaseAccount] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "PURCHASE")))
+
+  const [gstOutput] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "GST-OUTPUT")))
+
+  const [gstInput] = await tx
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "GST-INPUT")))
+
+  let entries: VoucherEntry[] = []
+  let totalAmount = 0
+
+  const isItemBased = ["sales", "purchase", "credit_note", "debit_note"].includes(
+    input.voucherClass
+  )
+
+  if (isItemBased) {
+    const isSalesType =
+      input.voucherClass === "sales" || input.voucherClass === "credit_note"
+    const defaultSalesOrPurchaseId = isSalesType
+      ? salesAccount?.id ?? null
+      : purchaseAccount?.id ?? null
+
+    const builtEntries = buildItemBasedEntries(
+      input,
+      partyAccountId,
+      defaultSalesOrPurchaseId,
+      gstOutput?.id ?? null,
+      gstInput?.id ?? null
+    )
+
+    entries = builtEntries.entries
+    totalAmount = builtEntries.grandTotal
+  } else {
+    const lines = input.accountLines ?? []
+    let lineNum = 1
+
+    for (const line of lines) {
+      entries.push({
+        accountId: line.accountId,
+        itemId: null,
+        description: line.description,
+        quantity: null,
+        rate: null,
+        debitAmount: line.debitAmount,
+        creditAmount: line.creditAmount,
+        lineNumber: lineNum++,
+      })
+      totalAmount += line.debitAmount
+    }
+
+    if (
+      input.balancingAccountId &&
+      (input.voucherClass === "payment" || input.voucherClass === "receipt")
+    ) {
+      const isPayment = input.voucherClass === "payment"
+      entries.push({
+        accountId: input.balancingAccountId,
+        itemId: null,
+        description: "",
+        quantity: null,
+        rate: null,
+        debitAmount: isPayment ? 0 : totalAmount,
+        creditAmount: isPayment ? totalAmount : 0,
+        lineNumber: lineNum++,
+      })
+    }
+  }
+
+  return { entries, totalAmount, isItemBased }
+}
+
+async function insertVoucherItems(
+  tx: DbTransaction,
+  voucherId: string,
+  entries: VoucherEntry[]
+) {
+  if (entries.length === 0) {
+    return
+  }
+
+  await tx.insert(voucherItems).values(
+    entries.map((entry) => ({
+      voucherId,
+      accountId: entry.accountId,
+      itemId: entry.itemId,
+      description: entry.description,
+      quantity: entry.quantity !== null ? String(entry.quantity) : null,
+      rate: entry.rate !== null ? String(entry.rate) : null,
+      debitAmount: String(entry.debitAmount),
+      creditAmount: String(entry.creditAmount),
+      lineNumber: entry.lineNumber,
+    }))
+  )
+}
+
+async function applyStockEffects(
+  tx: DbTransaction,
+  companyId: string,
+  voucherId: string,
+  voucherClass: string,
+  itemLines: ItemLineInput[]
+) {
+  const isSalesType = voucherClass === "sales" || voucherClass === "credit_note"
+
+  for (const line of itemLines) {
+    if (!line.itemId) continue
+
+    const movementType =
+      voucherClass === "sales"
+        ? "sale_out"
+        : voucherClass === "purchase"
+          ? "purchase_in"
+          : voucherClass === "credit_note"
+            ? "credit_note_in"
+            : "debit_note_out"
+
+    const qty = isSalesType ? -line.quantity : line.quantity
+    const lineValue = line.quantity * line.rate
+
+    await tx.insert(stockMovements).values({
+      companyId,
+      itemId: line.itemId,
+      voucherId,
+      movementType,
+      quantity: String(Math.abs(line.quantity)),
+      rate: String(line.rate),
+      value: String(lineValue),
+    })
+
+    await tx
+      .update(items)
+      .set({
+        currentStock: sql`${items.currentStock} + ${qty}`,
+      })
+      .where(and(eq(items.id, line.itemId), eq(items.companyId, companyId)))
+  }
+}
+
+async function reverseStockEffects(
+  tx: DbTransaction,
+  companyId: string,
+  voucherClass: string,
+  existingItems: Array<{
+    itemId: string | null
+    quantity: string | null
+  }>
+) {
+  const originalWasSalesType =
+    voucherClass === "sales" || voucherClass === "credit_note"
+
+  for (const item of existingItems) {
+    if (!item.itemId) continue
+
+    const originalQuantity = Number(item.quantity ?? 0)
+    const reversal = originalWasSalesType ? originalQuantity : -originalQuantity
+
+    await tx
+      .update(items)
+      .set({ currentStock: sql`${items.currentStock} + ${reversal}` })
+      .where(and(eq(items.id, item.itemId), eq(items.companyId, companyId)))
+  }
+}
+
+async function applyAccountBalanceEffects(
+  tx: DbTransaction,
+  companyId: string,
+  entries: Array<{
+    accountId: string | null
+    debitAmount: number
+    creditAmount: number
+  }>
+) {
+  for (const entry of entries) {
+    if (!entry.accountId) continue
+
+    const netChange = entry.debitAmount - entry.creditAmount
+    if (netChange === 0) continue
+
+    await tx
+      .update(accounts)
+      .set({
+        currentBalance: sql`${accounts.currentBalance} + ${netChange}`,
+      })
+      .where(and(eq(accounts.id, entry.accountId), eq(accounts.companyId, companyId)))
+  }
+}
+
+async function reverseAccountBalanceEffects(
+  tx: DbTransaction,
+  companyId: string,
+  entries: Array<{
+    accountId: string | null
+    debitAmount: string | null
+    creditAmount: string | null
+  }>
+) {
+  for (const entry of entries) {
+    if (!entry.accountId) continue
+
+    const reversal =
+      Number(entry.creditAmount ?? 0) - Number(entry.debitAmount ?? 0)
+    if (reversal === 0) continue
+
+    await tx
+      .update(accounts)
+      .set({
+        currentBalance: sql`${accounts.currentBalance} + ${reversal}`,
+      })
+      .where(and(eq(accounts.id, entry.accountId), eq(accounts.companyId, companyId)))
+  }
 }
 
 async function listCashBankAccounts(companyId: string) {
@@ -464,105 +718,11 @@ export async function createVoucher(
       .set({ currentNumber: currentNumber + 1 })
       .where(eq(voucherTypes.id, voucherType.id))
 
-    let partyAccountId: string | null = null
-    if (input.partyId) {
-      const [party] = await tx
-        .select({ accountId: parties.accountId })
-        .from(parties)
-        .where(and(eq(parties.id, input.partyId), eq(parties.companyId, companyId)))
-
-      partyAccountId = party?.accountId ?? null
-    }
-
-    const [salesAccount] = await tx
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "SALES")))
-
-    const [purchaseAccount] = await tx
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "PURCHASE")))
-
-    const [gstOutput] = await tx
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "GST-OUTPUT")))
-
-    const [gstInput] = await tx
-      .select({ id: accounts.id })
-      .from(accounts)
-      .where(and(eq(accounts.companyId, companyId), eq(accounts.code, "GST-INPUT")))
-
-    let entries: Array<{
-      accountId: string | null
-      itemId: string | null
-      description: string
-      quantity: number | null
-      rate: number | null
-      debitAmount: number
-      creditAmount: number
-      lineNumber: number
-    }> = []
-
-    let totalAmount = 0
-
-    const isItemBased = ["sales", "purchase", "credit_note", "debit_note"].includes(
-      input.voucherClass
+    const { entries, totalAmount, isItemBased } = await buildVoucherState(
+      tx,
+      companyId,
+      input
     )
-
-    if (isItemBased) {
-      const isSalesType =
-        input.voucherClass === "sales" || input.voucherClass === "credit_note"
-      const defaultSalesOrPurchaseId = isSalesType
-        ? salesAccount?.id ?? null
-        : purchaseAccount?.id ?? null
-
-      const builtEntries = buildItemBasedEntries(
-        input,
-        partyAccountId,
-        defaultSalesOrPurchaseId,
-        gstOutput?.id ?? null,
-        gstInput?.id ?? null
-      )
-
-      entries = builtEntries.entries
-      totalAmount = builtEntries.grandTotal
-    } else {
-      const lines = input.accountLines ?? []
-      let lineNum = 1
-
-      for (const line of lines) {
-        entries.push({
-          accountId: line.accountId,
-          itemId: null,
-          description: line.description,
-          quantity: null,
-          rate: null,
-          debitAmount: line.debitAmount,
-          creditAmount: line.creditAmount,
-          lineNumber: lineNum++,
-        })
-        totalAmount += line.debitAmount
-      }
-
-      if (
-        input.balancingAccountId &&
-        (input.voucherClass === "payment" || input.voucherClass === "receipt")
-      ) {
-        const isPayment = input.voucherClass === "payment"
-        entries.push({
-          accountId: input.balancingAccountId,
-          itemId: null,
-          description: "",
-          quantity: null,
-          rate: null,
-          debitAmount: isPayment ? 0 : totalAmount,
-          creditAmount: isPayment ? totalAmount : 0,
-          lineNumber: lineNum++,
-        })
-      }
-    }
 
     const [voucher] = await tx
       .insert(vouchers)
@@ -585,75 +745,136 @@ export async function createVoucher(
       throw new Error("Failed to create voucher")
     }
 
-    if (entries.length > 0) {
-      await tx.insert(voucherItems).values(
-        entries.map((entry) => ({
-          voucherId: voucher.id,
-          accountId: entry.accountId,
-          itemId: entry.itemId,
-          description: entry.description,
-          quantity: entry.quantity !== null ? String(entry.quantity) : null,
-          rate: entry.rate !== null ? String(entry.rate) : null,
-          debitAmount: String(entry.debitAmount),
-          creditAmount: String(entry.creditAmount),
-          lineNumber: entry.lineNumber,
-        }))
+    await insertVoucherItems(tx, voucher.id, entries)
+
+    if (isItemBased) {
+      await applyStockEffects(
+        tx,
+        companyId,
+        voucher.id,
+        input.voucherClass,
+        input.itemLines ?? []
       )
     }
 
-    if (isItemBased) {
-      const itemLines = input.itemLines ?? []
-      const isSalesType =
-        input.voucherClass === "sales" || input.voucherClass === "credit_note"
-
-      for (const line of itemLines) {
-        if (!line.itemId) continue
-
-        const movementType =
-          input.voucherClass === "sales"
-            ? "sale_out"
-            : input.voucherClass === "purchase"
-              ? "purchase_in"
-              : input.voucherClass === "credit_note"
-                ? "credit_note_in"
-                : "debit_note_out"
-
-        const qty = isSalesType ? -line.quantity : line.quantity
-        const lineValue = line.quantity * line.rate
-
-        await tx.insert(stockMovements).values({
-          companyId,
-          itemId: line.itemId,
-          voucherId: voucher.id,
-          movementType,
-          quantity: String(Math.abs(line.quantity)),
-          rate: String(line.rate),
-          value: String(lineValue),
-        })
-
-        await tx
-          .update(items)
-          .set({
-            currentStock: sql`${items.currentStock} + ${qty}`,
-          })
-          .where(and(eq(items.id, line.itemId), eq(items.companyId, companyId)))
-      }
-    }
-
-    for (const entry of entries) {
-      if (!entry.accountId) continue
-      const netChange = entry.debitAmount - entry.creditAmount
-      if (netChange === 0) continue
-
-      await tx
-        .update(accounts)
-        .set({
-          currentBalance: sql`${accounts.currentBalance} + ${netChange}`,
-        })
-        .where(and(eq(accounts.id, entry.accountId), eq(accounts.companyId, companyId)))
-    }
+    await applyAccountBalanceEffects(tx, companyId, entries)
 
     return { voucherId: voucher.id, voucherNumber: voucher.voucherNumber }
+  })
+}
+
+export async function updateVoucher(
+  companyId: string,
+  voucherId: string,
+  input: UpdateVoucherInput
+) {
+  if (!input.voucherTypeId) throw new Error("Voucher type is required")
+  if (!input.voucherDate) throw new Error("Voucher date is required")
+
+  return db.transaction(async (tx) => {
+    const [existingVoucher] = await tx
+      .select({
+        id: vouchers.id,
+        voucherNumber: vouchers.voucherNumber,
+        status: vouchers.status,
+        voucherTypeId: vouchers.voucherTypeId,
+        voucherClass: voucherTypes.voucherClass,
+      })
+      .from(vouchers)
+      .innerJoin(voucherTypes, eq(vouchers.voucherTypeId, voucherTypes.id))
+      .where(and(eq(vouchers.id, voucherId), eq(vouchers.companyId, companyId)))
+
+    if (!existingVoucher) throw new Error("Voucher not found")
+    if (existingVoucher.status === "cancelled") {
+      throw new Error("Cancelled vouchers cannot be edited")
+    }
+    if (existingVoucher.voucherClass !== input.voucherClass) {
+      throw new Error("Voucher class cannot be changed")
+    }
+
+    const [voucherType] = await tx
+      .select({
+        id: voucherTypes.id,
+        isActive: voucherTypes.isActive,
+        voucherClass: voucherTypes.voucherClass,
+      })
+      .from(voucherTypes)
+      .where(
+        and(
+          eq(voucherTypes.id, input.voucherTypeId),
+          eq(voucherTypes.companyId, companyId)
+        )
+      )
+
+    if (!voucherType) throw new Error("Voucher type not found")
+    if (!voucherType.isActive) throw new Error("Voucher type is inactive")
+    if (voucherType.voucherClass !== existingVoucher.voucherClass) {
+      throw new Error("Voucher type must remain in the same transaction class")
+    }
+
+    const existingItems = await tx
+      .select({
+        accountId: voucherItems.accountId,
+        itemId: voucherItems.itemId,
+        quantity: voucherItems.quantity,
+        debitAmount: voucherItems.debitAmount,
+        creditAmount: voucherItems.creditAmount,
+      })
+      .from(voucherItems)
+      .where(eq(voucherItems.voucherId, voucherId))
+
+    await reverseAccountBalanceEffects(tx, companyId, existingItems)
+
+    if (["sales", "purchase", "credit_note", "debit_note"].includes(input.voucherClass)) {
+      await reverseStockEffects(
+        tx,
+        companyId,
+        existingVoucher.voucherClass,
+        existingItems
+      )
+      await tx.delete(stockMovements).where(eq(stockMovements.voucherId, voucherId))
+    }
+
+    await tx.delete(voucherItems).where(eq(voucherItems.voucherId, voucherId))
+
+    const { entries, totalAmount, isItemBased } = await buildVoucherState(
+      tx,
+      companyId,
+      input
+    )
+
+    await tx
+      .update(vouchers)
+      .set({
+        voucherTypeId: input.voucherTypeId,
+        referenceNumber: input.referenceNumber || null,
+        voucherDate: input.voucherDate,
+        partyId: input.partyId || null,
+        narration: input.narration || null,
+        totalAmount: String(totalAmount),
+        dueDate: input.dueDate || null,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(vouchers.id, voucherId))
+
+    await insertVoucherItems(tx, voucherId, entries)
+
+    if (isItemBased) {
+      await applyStockEffects(
+        tx,
+        companyId,
+        voucherId,
+        input.voucherClass,
+        input.itemLines ?? []
+      )
+    }
+
+    await applyAccountBalanceEffects(tx, companyId, entries)
+
+    return {
+      voucherId: existingVoucher.id,
+      voucherNumber: existingVoucher.voucherNumber,
+    }
   })
 }
 

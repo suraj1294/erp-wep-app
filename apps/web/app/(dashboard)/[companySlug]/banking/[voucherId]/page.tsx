@@ -50,6 +50,11 @@ export default async function BankingVoucherPage({ params }: PageProps) {
               Active
             </Badge>
           )}
+          {!isCancelled && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/${companySlug}/banking/${voucherId}/edit`}>Edit</Link>
+            </Button>
+          )}
         </div>
       </div>
 

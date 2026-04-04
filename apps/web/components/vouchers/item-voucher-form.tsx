@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "@workspace/ui/components/sonner"
 import {
@@ -21,7 +21,8 @@ import {
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
 import type { ItemOption } from "./item-combobox"
-import { createVoucher } from "@/lib/api/vouchers"
+import { createVoucher, updateVoucher } from "@/lib/api/vouchers"
+import type { ItemVoucherInitialValues } from "@/lib/voucher-edit"
 
 export interface VoucherTypeOption {
   id: string
@@ -31,7 +32,7 @@ export interface VoucherTypeOption {
 }
 
 interface ItemVoucherFormProps {
-  companyId: string
+  companySlug: string
   voucherClass: "sales" | "purchase" | "credit_note" | "debit_note"
   voucherTypes: VoucherTypeOption[]
   parties: PartyOption[]
@@ -41,6 +42,9 @@ interface ItemVoucherFormProps {
   backHref: string
   title: string
   listHref: string
+  voucherId?: string
+  mode?: "create" | "edit"
+  initialValues?: ItemVoucherInitialValues
 }
 
 function previewNumber(vt: VoucherTypeOption): string {
@@ -52,7 +56,7 @@ const today = new Date().toISOString().slice(0, 10)
 const ITEM_CLASSES_USING_SALES_RATE = ["sales", "credit_note"]
 
 export function ItemVoucherForm({
-  companyId,
+  companySlug,
   voucherClass,
   voucherTypes,
   parties,
@@ -61,25 +65,36 @@ export function ItemVoucherForm({
   backHref,
   title,
   listHref,
+  voucherId,
+  mode = "create",
+  initialValues,
 }: ItemVoucherFormProps) {
   const router = useRouter()
-  const [isPending, startTransition] = useTransition()
+  const [isSaving, setIsSaving] = useState(false)
+  const isEditMode = mode === "edit"
 
   // Header state
-  const [voucherTypeId, setVoucherTypeId] = useState(voucherTypes[0]?.id ?? "")
-  const [voucherDate, setVoucherDate] = useState(today)
-  const [referenceNumber, setReferenceNumber] = useState("")
-  const [partyId, setPartyId] = useState("")
+  const [voucherTypeId, setVoucherTypeId] = useState(
+    initialValues?.voucherTypeId ?? voucherTypes[0]?.id ?? ""
+  )
+  const [voucherDate, setVoucherDate] = useState(
+    initialValues?.voucherDate ?? today
+  )
+  const [referenceNumber, setReferenceNumber] = useState(
+    initialValues?.referenceNumber ?? ""
+  )
+  const [partyId, setPartyId] = useState(initialValues?.partyId ?? "")
   const [partyName, setPartyName] = useState<string | null>(null)
-  const [partyAccountId, setPartyAccountId] = useState<string | null>(null)
-  const [dueDate, setDueDate] = useState("")
-  const [narration, setNarration] = useState("")
+  const [dueDate, setDueDate] = useState(initialValues?.dueDate ?? "")
+  const [narration, setNarration] = useState(initialValues?.narration ?? "")
 
   // Line items state
   const rateField = ITEM_CLASSES_USING_SALES_RATE.includes(voucherClass)
     ? "salesRate"
     : "purchaseRate"
-  const [lines, dispatch] = useItemLines()
+  const [lines, dispatch] = useItemLines(
+    initialValues?.lines.length ? initialValues.lines : undefined
+  )
 
   // Computed summary
   const parsedLines = useMemo(
@@ -153,34 +168,50 @@ export function ItemVoucherForm({
     setReferenceNumber("")
     setPartyId("")
     setPartyName(null)
-    setPartyAccountId(null)
     setDueDate("")
     setNarration("")
     dispatch({ type: "REMOVE_ROW", index: 0 })
     dispatch({ type: "ADD_ROW" })
   }
 
-  function handleSave(saveAndNew = false) {
+  async function handleSave(saveAndNew = false) {
     const err = validate()
     if (err) {
       toast.error(err)
       return
     }
-    startTransition(async () => {
-      try {
-        const result = await createVoucher(companyId, buildInput())
-        toast.success(`Voucher ${result.voucherNumber} saved.`)
-        if (saveAndNew) {
-          resetForm()
-        } else {
-          router.push(listHref)
-        }
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to save voucher."
-        )
+
+    if (isSaving) {
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      const result =
+        isEditMode && voucherId
+          ? await updateVoucher(companySlug, voucherId, buildInput())
+          : await createVoucher(companySlug, buildInput())
+
+      toast.success(
+        isEditMode
+          ? `Voucher ${result.voucherNumber} updated.`
+          : `Voucher ${result.voucherNumber} saved.`
+      )
+
+      if (saveAndNew && !isEditMode) {
+        resetForm()
+        setIsSaving(false)
+        return
       }
-    })
+
+      window.location.assign(listHref)
+    } catch (err) {
+      setIsSaving(false)
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save voucher."
+      )
+    }
   }
 
   return (
@@ -190,10 +221,11 @@ export function ItemVoucherForm({
       backLabel={`Back to ${title}`}
       narration={narration}
       onNarrationChange={setNarration}
-      onSave={() => handleSave(false)}
-      onSaveAndNew={() => handleSave(true)}
+      onSave={() => void handleSave(false)}
+      onSaveAndNew={isEditMode ? undefined : () => void handleSave(true)}
       onCancel={() => router.push(listHref)}
-      isPending={isPending}
+      isPending={isSaving}
+      saveLabel={isEditMode ? "Save Changes" : "Save"}
       footer={
         <div className="flex flex-col gap-4">
           <VoucherSummary
@@ -207,7 +239,7 @@ export function ItemVoucherForm({
       }
     >
       {/* Voucher type selector */}
-      {voucherTypes.length > 1 && (
+      {voucherTypes.length > 1 && !isEditMode && (
         <div className="flex max-w-xs flex-col gap-1">
           <label className="text-xs font-medium text-muted-foreground">
             Voucher Type
@@ -229,7 +261,10 @@ export function ItemVoucherForm({
 
       <VoucherHeader
         voucherClass={voucherClass}
-        voucherNumber={selectedVt ? previewNumber(selectedVt) : "—"}
+        voucherNumber={
+          initialValues?.voucherNumber ??
+          (selectedVt ? previewNumber(selectedVt) : "—")
+        }
         voucherDate={voucherDate}
         onVoucherDateChange={setVoucherDate}
         referenceNumber={referenceNumber}
@@ -238,7 +273,6 @@ export function ItemVoucherForm({
         onPartyChange={(party) => {
           setPartyId(party.id)
           setPartyName(party.displayName ?? party.name)
-          setPartyAccountId(party.accountId)
         }}
         parties={parties}
         dueDate={dueDate}

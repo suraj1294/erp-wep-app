@@ -122,7 +122,13 @@ export function VoucherListTable({
                     </TableCell>
                   )}
                   <TableCell className="font-mono text-xs font-medium">
-                    {row.voucherNumber}
+                    <Link
+                      href={`${basePath}/${row.id}`}
+                      className="hover:underline"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      {row.voucherNumber}
+                    </Link>
                   </TableCell>
                   <TableCell className="text-xs">
                     {row.partyName ?? "—"}
@@ -147,24 +153,26 @@ export function VoucherListTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link href={`${basePath}/${row.id}`}>
-                            <HugeiconsIcon
-                              icon={EyeIcon}
-                              className="size-3.5"
-                            />
-                            View
-                          </Link>
+                        <DropdownMenuItem
+                          onSelect={() => router.push(`${basePath}/${row.id}`)}
+                        >
+                          <HugeiconsIcon
+                            icon={EyeIcon}
+                            className="size-3.5"
+                          />
+                          View
                         </DropdownMenuItem>
                         {row.status !== "cancelled" && (
-                          <DropdownMenuItem asChild>
-                            <Link href={`${basePath}/${row.id}/edit`}>
-                              <HugeiconsIcon
-                                icon={PencilEdit01Icon}
-                                className="size-3.5"
-                              />
-                              Edit
-                            </Link>
+                          <DropdownMenuItem
+                            onSelect={() =>
+                              router.push(`${basePath}/${row.id}/edit`)
+                            }
+                          >
+                            <HugeiconsIcon
+                              icon={PencilEdit01Icon}
+                              className="size-3.5"
+                            />
+                            Edit
                           </DropdownMenuItem>
                         )}
                         {row.status !== "cancelled" && onCancel && (
