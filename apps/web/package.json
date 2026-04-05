@@ -10,6 +10,7 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "docker:seed": "tsx scripts/docker-seed.ts",
     "e2e": "pnpm -C ../web-e2e e2e",
     "e2e:ui": "pnpm -C ../web-e2e e2e:ui",
     "e2e:report": "pnpm -C ../web-e2e e2e:report"
@@ -35,6 +36,7 @@
     "@workspace/eslint-config": "workspace:^",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9.39.2",
+    "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   }
 }

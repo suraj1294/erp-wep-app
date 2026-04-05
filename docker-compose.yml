@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: tally-erp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-tally_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-user} -d ${POSTGRES_DB:-tally_erp}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tally-erp-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-tally_erp}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-docker-local-secret-please-change-me-32}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      AUTH_REQUIRE_EMAIL_VERIFICATION: ${AUTH_REQUIRE_EMAIL_VERIFICATION:-false}
+      NEXT_PUBLIC_AUTH_REQUIRE_EMAIL_VERIFICATION: ${NEXT_PUBLIC_AUTH_REQUIRE_EMAIL_VERIFICATION:-false}
+      RESEND_API_KEY: ${RESEND_API_KEY:-re_local_dummy}
+      EMAIL_FROM: ${EMAIL_FROM:-Tally ERP <noreply@example.com>}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-tally_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      DB_BOOTSTRAP_MODE: ${DB_BOOTSTRAP_MODE:-clean}
+      DEMO_USER_NAME: ${DEMO_USER_NAME:-Demo User}
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@example.com}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-password123}
+      DEMO_COMPANY_NAME: ${DEMO_COMPANY_NAME:-Acme Corp Ltd}
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

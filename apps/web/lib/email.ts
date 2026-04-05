@@ -1,12 +1,33 @@
 import { Resend } from "resend"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+const resendApiKey = process.env.RESEND_API_KEY
+const resend =
+  resendApiKey && !resendApiKey.startsWith("re_local_")
+    ? new Resend(resendApiKey)
+    : null
 
 const fromEmail = process.env.EMAIL_FROM || "Tally ERP <noreply@example.com>"
 
-export async function sendVerificationEmail(email: string, url: string) {
+async function sendEmailOrLog(input: {
+  to: string
+  subject: string
+  html: string
+}) {
+  if (!resend) {
+    console.log(`[email] Skipping email send in local mode: ${input.subject} -> ${input.to}`)
+    return
+  }
+
   await resend.emails.send({
     from: fromEmail,
+    to: input.to,
+    subject: input.subject,
+    html: input.html,
+  })
+}
+
+export async function sendVerificationEmail(email: string, url: string) {
+  await sendEmailOrLog({
     to: email,
     subject: "Verify your email address",
     html: `
@@ -25,8 +46,7 @@ export async function sendVerificationEmail(email: string, url: string) {
 }
 
 export async function sendPasswordResetEmail(email: string, url: string) {
-  await resend.emails.send({
-    from: fromEmail,
+  await sendEmailOrLog({
     to: email,
     subject: "Reset your password",
     html: `
@@ -51,8 +71,7 @@ export async function sendCompanyInvitationEmail(
   inviterName: string,
   url: string
 ) {
-  await resend.emails.send({
-    from: fromEmail,
+  await sendEmailOrLog({
     to: email,
     subject: `You've been invited to join ${companyName}`,
     html: `

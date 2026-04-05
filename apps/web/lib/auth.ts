@@ -5,6 +5,9 @@ import * as schema from "@workspace/db/schema"
 import { sendVerificationEmail, sendPasswordResetEmail } from "./email"
 import { nextCookies } from "better-auth/next-js"
 
+const requireEmailVerification =
+  process.env.AUTH_REQUIRE_EMAIL_VERIFICATION !== "false"
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
@@ -17,14 +20,18 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: true,
+    requireEmailVerification,
     sendResetPassword: async ({ user, url }) => {
       await sendPasswordResetEmail(user.email, url)
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    sendOnSignUp: requireEmailVerification,
     sendVerificationEmail: async ({ user, url }) => {
+      if (!requireEmailVerification) {
+        return
+      }
+
       await sendVerificationEmail(user.email, url)
     },
   },

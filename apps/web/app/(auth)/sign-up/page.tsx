@@ -16,6 +16,9 @@ import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Button } from "@workspace/ui/components/button"
 
+const requireEmailVerification =
+  process.env.NEXT_PUBLIC_AUTH_REQUIRE_EMAIL_VERIFICATION !== "false"
+
 export default function SignUpPage() {
   const router = useRouter()
   const [name, setName] = useState("")
@@ -39,7 +42,11 @@ export default function SignUpPage() {
       setError(error.message || "Failed to create account")
       setLoading(false)
     } else {
-      router.push("/verify-email?email=" + encodeURIComponent(email))
+      router.push(
+        requireEmailVerification
+          ? "/verify-email?email=" + encodeURIComponent(email)
+          : "/app"
+      )
     }
   }
 

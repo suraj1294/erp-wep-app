@@ -7,7 +7,12 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "format": "turbo format",
-    "typecheck": "turbo typecheck"
+    "typecheck": "turbo typecheck",
+    "docker:up:clean": "./scripts/docker/up.sh clean",
+    "docker:up:schema": "./scripts/docker/up.sh schema",
+    "docker:up:seeded": "./scripts/docker/up.sh seeded",
+    "docker:down": "docker compose down --remove-orphans",
+    "docker:logs": "docker compose logs -f postgres web"
   },
   "devDependencies": {
     "@workspace/eslint-config": "workspace:*",

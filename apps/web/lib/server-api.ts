@@ -5,7 +5,7 @@ interface ActiveCompanyMembership {
   companySlug: string
 }
 
-interface AccessibleCompany {
+export interface AccessibleCompany {
   id: string
   slug: string
   name: string
