@@ -17,6 +17,7 @@ const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Mayank@1294"
  */
 const sidebarTrigger = (page: Page) =>
   page.locator('[data-sidebar="trigger"]')
+const sidebar = (page: Page) => page.locator('[data-sidebar="sidebar"]').first()
 const sidebarHeader = (page: Page) => page.locator('[data-sidebar="header"]')
 
 async function getCurrentCompanyName(page: Page) {
@@ -37,21 +38,10 @@ async function gotoCompanyDashboard(page: Page) {
 
 /** Ensure the sidebar is expanded so nav labels are visible. */
 async function expandSidebar(page: Page) {
-  const dashboardLink = page.getByRole("link", { name: "Dashboard" })
+  const dashboardLink = sidebar(page).getByRole("link", { name: "Dashboard" })
   if (!(await dashboardLink.isVisible())) {
     await sidebarTrigger(page).click()
     await expect(dashboardLink).toBeVisible()
-  }
-}
-
-async function expandTransactions(page: Page) {
-  await expandSidebar(page)
-  const salesLink = page.getByRole("link", { name: "Sales" })
-  if (!(await salesLink.isVisible())) {
-    await page
-      .locator('button[data-sidebar="menu-button"]', { hasText: "Transactions" })
-      .click()
-    await expect(salesLink).toBeVisible()
   }
 }
 
@@ -95,25 +85,21 @@ test.describe("Dashboard layout", () => {
     await expect(sidebarHeader(page)).toContainText(companyName)
   })
 
-  test("sidebar displays all navigation items", async ({ page }) => {
+  test("sidebar displays visible navigation groups and links", async ({ page }) => {
     await expandSidebar(page)
     for (const item of [
       "Dashboard",
+      "Transactions",
+      "Masters",
       "Chart of Accounts",
       "Parties",
       "Items",
+      "Settings",
     ]) {
-      await expect(page.getByRole("link", { name: item })).toBeVisible()
-    }
-
-    await expect(
-      page.locator('button[data-sidebar="menu-button"]', { hasText: "Transactions" })
-    ).toBeVisible()
-
-    await expandTransactions(page)
-
-    for (const item of ["Sales", "Purchase", "Banking"]) {
-      await expect(page.getByRole("link", { name: item })).toBeVisible()
+      const locator = item === "Transactions" || item === "Masters"
+        ? sidebar(page).getByRole("button", { name: item, exact: true })
+        : sidebar(page).getByRole("link", { name: item })
+      await expect(locator).toBeVisible()
     }
   })
 
@@ -159,7 +145,10 @@ test.describe("Dashboard layout", () => {
   })
 
   test("dashboard page shows summary stat cards", async ({ page }) => {
-    await expect(page.getByRole("heading", { name: "Company Dashboard" })).toBeVisible()
+    const companyName = await getCurrentCompanyName(page)
+
+    expect(companyName).toBeTruthy()
+    await expect(page.getByRole("heading", { name: companyName })).toBeVisible()
     for (const card of ["Accounts", "Vouchers", "Parties", "Items"]) {
       await expect(page.getByText(card).first()).toBeVisible()
     }

@@ -1,6 +1,7 @@
 {
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -11,7 +12,5 @@
       "@workspace/db": ["../../packages/db/src/index.ts"]
     }
   },
-  "include": [
-    "e2e/**/*.ts"
-  ]
+  "include": ["e2e/**/*.ts"]
 }

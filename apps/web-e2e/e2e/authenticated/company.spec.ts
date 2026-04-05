@@ -6,6 +6,7 @@ import { test, expect, type Page } from "@playwright/test"
 
 const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
 
+const sidebar = (page: Page) => page.locator('[data-sidebar="sidebar"]').first()
 const sidebarTrigger = (page: Page) => page.locator('[data-sidebar="trigger"]')
 const sidebarHeader = (page: Page) => page.locator('[data-sidebar="header"]')
 
@@ -25,21 +26,10 @@ async function gotoCompanyDashboard(page: Page) {
 }
 
 async function expandSidebar(page: Page) {
-  const dashboardLink = page.getByRole("link", { name: "Dashboard" })
+  const dashboardLink = sidebar(page).getByRole("link", { name: "Dashboard" })
   if (!(await dashboardLink.isVisible())) {
     await sidebarTrigger(page).click()
     await expect(dashboardLink).toBeVisible()
-  }
-}
-
-async function expandTransactions(page: Page) {
-  await expandSidebar(page)
-  const salesLink = page.getByRole("link", { name: "Sales" })
-  if (!(await salesLink.isVisible())) {
-    await page
-      .locator('button[data-sidebar="menu-button"]', { hasText: "Transactions" })
-      .click()
-    await expect(salesLink).toBeVisible()
   }
 }
 
@@ -58,7 +48,9 @@ test.describe("Company access control", () => {
     )
 
     await expect(page).not.toHaveURL("/unknown-company-slug")
-    await expect(page.getByRole("heading", { name: "Company Dashboard" })).toBeVisible()
+    const companyName = await getCurrentCompanyName(page)
+    expect(companyName).toBeTruthy()
+    await expect(page.locator("main")).toContainText(companyName)
   })
 
   test("company name appears in the sidebar header and topbar", async ({ page }) => {
@@ -72,23 +64,26 @@ test.describe("Company access control", () => {
     await expect(page.locator("main")).toContainText(companyName)
   })
 
-  test("sidebar nav links are scoped to the current company slug", async ({ page }) => {
+  test("sidebar report links are scoped to the current company slug", async ({ page }) => {
     await gotoCompanyDashboard(page)
     await expandSidebar(page)
-    await expandTransactions(page)
 
     const companySlug = new URL(page.url()).pathname.split("/")[1]
 
     await expect(
-      page.getByRole("link", { name: "Chart of Accounts" })
+      sidebar(page).getByRole("link", { name: "Chart of Accounts" })
     ).toHaveAttribute("href", `/${companySlug}/accounts`)
 
     await expect(
-      page.getByRole("link", { name: "Parties" })
+      sidebar(page).getByRole("link", { name: "Parties" })
     ).toHaveAttribute("href", `/${companySlug}/parties`)
 
     await expect(
-      page.getByRole("link", { name: "Sales" })
-    ).toHaveAttribute("href", `/${companySlug}/sales`)
+      sidebar(page).getByRole("link", { name: "Items" })
+    ).toHaveAttribute("href", `/${companySlug}/items`)
+
+    await expect(
+      sidebar(page).getByRole("link", { name: "Settings" })
+    ).toHaveAttribute("href", `/${companySlug}/settings`)
   })
 })

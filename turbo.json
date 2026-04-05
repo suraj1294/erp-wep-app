@@ -29,7 +29,8 @@
     },
     "e2e": {
       "cache": false,
-      "dependsOn": ["^build"]
+      "dependsOn": ["^build"],
+      "env": ["CI", "PLAYWRIGHT_BASE_URL", "E2E_EMAIL", "E2E_PASSWORD"]
     }
   }
 }

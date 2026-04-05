@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { resolveAccessibleCompany } from "@/lib/company-routing"
 import { getCompanyDashboardData } from "@/lib/server-api"
 import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
@@ -38,6 +39,7 @@ export default async function CompanyDashboardPage({
   params: Promise<{ companySlug: string }>
 }) {
   const { companySlug } = await params
+  const { currentCompany } = await resolveAccessibleCompany(companySlug)
   const {
     company,
     membership,
@@ -45,7 +47,7 @@ export default async function CompanyDashboardPage({
     recentTransactions,
     voucherMix,
     monthlyActivity,
-  } = await getCompanyDashboardData(companySlug)
+  } = await getCompanyDashboardData(currentCompany.slug)
 
   const monthlyMaxAmount = Math.max(
     ...monthlyActivity.map((entry) => Number(entry.totalAmount)),
