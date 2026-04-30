@@ -15,7 +15,10 @@ import { VoucherHeader } from "./voucher-header"
 import { AccountLineItems, useAccountLines } from "./account-line-items"
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
-import { createVoucher, updateVoucher } from "@/lib/api/vouchers"
+import {
+  useCreateVoucher,
+  useUpdateVoucher,
+} from "@/lib/queries/use-voucher-queries"
 import type { VoucherTypeOption } from "./item-voucher-form"
 import type { AccountVoucherInitialValues } from "@/lib/voucher-edit"
 
@@ -58,9 +61,12 @@ export function AccountVoucherForm({
   initialValues,
 }: AccountVoucherFormProps) {
   const router = useRouter()
-  const [isSaving, setIsSaving] = useState(false)
   const lineMode = voucherClass as "payment" | "receipt" | "journal" | "contra"
   const isEditMode = formMode === "edit"
+  const createVoucherMutation = useCreateVoucher(companySlug)
+  const updateVoucherMutation = useUpdateVoucher(companySlug, voucherId ?? "")
+  const isSaving =
+    createVoucherMutation.isPending || updateVoucherMutation.isPending
 
   // Header state
   const [voucherTypeId, setVoucherTypeId] = useState(
@@ -138,8 +144,6 @@ export function AccountVoucherForm({
       return
     }
 
-    setIsSaving(true)
-
     try {
       const accountLines = lines
         .filter((l) => l.accountId)
@@ -165,8 +169,8 @@ export function AccountVoucherForm({
       }
       const result =
         isEditMode && voucherId
-          ? await updateVoucher(companySlug, voucherId, payload)
-          : await createVoucher(companySlug, payload)
+          ? await updateVoucherMutation.mutateAsync(payload)
+          : await createVoucherMutation.mutateAsync(payload)
       toast.success(
         isEditMode
           ? `Voucher ${result.voucherNumber} updated.`
@@ -182,13 +186,11 @@ export function AccountVoucherForm({
         if (isJournal) dispatch({ type: "REMOVE_ROW", index: 0 })
         dispatch({ type: "ADD_ROW" })
         if (isJournal) dispatch({ type: "ADD_ROW" })
-        setIsSaving(false)
         return
       }
 
       window.location.assign(listHref)
     } catch (err) {
-      setIsSaving(false)
       toast.error(
         err instanceof Error ? err.message : "Failed to save voucher."
       )

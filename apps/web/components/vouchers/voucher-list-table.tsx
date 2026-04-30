@@ -2,6 +2,12 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+} from "@tanstack/react-table"
 import { HugeiconsIcon } from "@hugeicons/react"
 import {
   Add01Icon,
@@ -71,6 +77,114 @@ export function VoucherListTable({
   showType = false,
 }: VoucherListTableProps) {
   const router = useRouter()
+  const tableColumns = [
+    {
+      accessorKey: "voucherDate",
+      header: "Date",
+      cell: ({ getValue }) => (
+        <span className="font-mono text-xs">{String(getValue())}</span>
+      ),
+    },
+    ...(showType
+      ? [
+          {
+            accessorKey: "voucherTypeName",
+            header: "Type",
+            cell: ({ getValue }) => (
+              <span className="text-xs">{String(getValue() ?? "—")}</span>
+            ),
+          } satisfies ColumnDef<VoucherRow>,
+        ]
+      : []),
+    {
+      accessorKey: "voucherNumber",
+      header: "Number",
+      cell: ({ row, getValue }) => (
+        <Link
+          href={`${basePath}/${row.original.id}`}
+          className="font-mono text-xs font-medium hover:underline"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {String(getValue())}
+        </Link>
+      ),
+    },
+    {
+      accessorKey: "partyName",
+      header: "Party",
+      cell: ({ getValue }) => (
+        <span className="text-xs">{String(getValue() ?? "—")}</span>
+      ),
+    },
+    {
+      accessorKey: "totalAmount",
+      header: () => <span className="block text-right">Amount</span>,
+      cell: ({ getValue }) => (
+        <span className="block text-right font-mono text-xs">
+          ₹{" "}
+          {parseFloat(String(getValue())).toLocaleString("en-IN", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ getValue }) => statusBadge(String(getValue() ?? "active")),
+    },
+    {
+      id: "actions",
+      header: () => <span className="block text-right">Actions</span>,
+      cell: ({ row }) => (
+        <div className="text-right" onClick={(event) => event.stopPropagation()}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm">
+                <span className="sr-only">Open menu</span>
+                <span className="text-base leading-none">⋯</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => router.push(`${basePath}/${row.original.id}`)}
+              >
+                <HugeiconsIcon icon={EyeIcon} className="size-3.5" />
+                View
+              </DropdownMenuItem>
+              {row.original.status !== "cancelled" && (
+                <DropdownMenuItem
+                  onSelect={() =>
+                    router.push(`${basePath}/${row.original.id}/edit`)
+                  }
+                >
+                  <HugeiconsIcon icon={PencilEdit01Icon} className="size-3.5" />
+                  Edit
+                </DropdownMenuItem>
+              )}
+              {row.original.status !== "cancelled" && onCancel && (
+                <DropdownMenuItem
+                  onClick={() => onCancel(row.original.id)}
+                  className="text-destructive"
+                >
+                  <HugeiconsIcon icon={Cancel01Icon} className="size-3.5" />
+                  Cancel
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ] satisfies ColumnDef<VoucherRow>[]
+  const table = useReactTable({
+    data: rows,
+    columns: tableColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getRowId: (row) => row.id,
+  })
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -86,15 +200,25 @@ export function VoucherListTable({
       <div className="rounded-md border">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              {showType && <TableHead>Type</TableHead>}
-              <TableHead>Number</TableHead>
-              <TableHead>Party</TableHead>
-              <TableHead className="text-right">Amount</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-[80px] text-right">Actions</TableHead>
-            </TableRow>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className={
+                      header.id === "actions" ? "w-[80px] text-right" : undefined
+                    }
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
           </TableHeader>
           <TableBody>
             {rows.length === 0 ? (
@@ -107,89 +231,25 @@ export function VoucherListTable({
                 </TableCell>
               </TableRow>
             ) : (
-              rows.map((row) => (
+              table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => router.push(`${basePath}/${row.id}`)}
+                  onClick={() => router.push(`${basePath}/${row.original.id}`)}
                 >
-                  <TableCell className="font-mono text-xs">
-                    {row.voucherDate}
-                  </TableCell>
-                  {showType && (
-                    <TableCell className="text-xs">
-                      {row.voucherTypeName ?? "—"}
-                    </TableCell>
-                  )}
-                  <TableCell className="font-mono text-xs font-medium">
-                    <Link
-                      href={`${basePath}/${row.id}`}
-                      className="hover:underline"
-                      onClick={(event) => event.stopPropagation()}
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell
+                      key={cell.id}
+                      className={
+                        cell.column.id === "actions" ? "text-right" : undefined
+                      }
                     >
-                      {row.voucherNumber}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="text-xs">
-                    {row.partyName ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-xs">
-                    ₹{" "}
-                    {parseFloat(row.totalAmount).toLocaleString("en-IN", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell>{statusBadge(row.status)}</TableCell>
-                  <TableCell
-                    className="text-right"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon-sm">
-                          <span className="sr-only">Open menu</span>
-                          <span className="text-base leading-none">⋯</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onSelect={() => router.push(`${basePath}/${row.id}`)}
-                        >
-                          <HugeiconsIcon
-                            icon={EyeIcon}
-                            className="size-3.5"
-                          />
-                          View
-                        </DropdownMenuItem>
-                        {row.status !== "cancelled" && (
-                          <DropdownMenuItem
-                            onSelect={() =>
-                              router.push(`${basePath}/${row.id}/edit`)
-                            }
-                          >
-                            <HugeiconsIcon
-                              icon={PencilEdit01Icon}
-                              className="size-3.5"
-                            />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        {row.status !== "cancelled" && onCancel && (
-                          <DropdownMenuItem
-                            onClick={() => onCancel(row.id)}
-                            className="text-destructive"
-                          >
-                            <HugeiconsIcon
-                              icon={Cancel01Icon}
-                              className="size-3.5"
-                            />
-                            Cancel
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
               ))
             )}

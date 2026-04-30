@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { E2E_EMAIL } from "../test-user"
 
 const envFilePath = resolve(process.cwd(), "../web/.env.local")
 for (const line of readFileSync(envFilePath, "utf8").split("\n")) {
@@ -45,7 +46,6 @@ const { seedCompanyDefaults } = await import(
 )
 const { createCompanyRecord } = await import("@/lib/company-slug")
 
-const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
 const FIXTURE_COMPANY_NAME = `Reports E2E ${Date.now()}`
 
 let companyId = ""

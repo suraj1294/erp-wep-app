@@ -21,7 +21,10 @@ import {
 import type { PartyOption } from "./party-combobox"
 import type { AccountOption } from "./account-combobox"
 import type { ItemOption } from "./item-combobox"
-import { createVoucher, updateVoucher } from "@/lib/api/vouchers"
+import {
+  useCreateVoucher,
+  useUpdateVoucher,
+} from "@/lib/queries/use-voucher-queries"
 import type { ItemVoucherInitialValues } from "@/lib/voucher-edit"
 
 export interface VoucherTypeOption {
@@ -70,8 +73,11 @@ export function ItemVoucherForm({
   initialValues,
 }: ItemVoucherFormProps) {
   const router = useRouter()
-  const [isSaving, setIsSaving] = useState(false)
   const isEditMode = mode === "edit"
+  const createVoucherMutation = useCreateVoucher(companySlug)
+  const updateVoucherMutation = useUpdateVoucher(companySlug, voucherId ?? "")
+  const isSaving =
+    createVoucherMutation.isPending || updateVoucherMutation.isPending
 
   // Header state
   const [voucherTypeId, setVoucherTypeId] = useState(
@@ -185,13 +191,11 @@ export function ItemVoucherForm({
       return
     }
 
-    setIsSaving(true)
-
     try {
       const result =
         isEditMode && voucherId
-          ? await updateVoucher(companySlug, voucherId, buildInput())
-          : await createVoucher(companySlug, buildInput())
+          ? await updateVoucherMutation.mutateAsync(buildInput())
+          : await createVoucherMutation.mutateAsync(buildInput())
 
       toast.success(
         isEditMode
@@ -201,13 +205,11 @@ export function ItemVoucherForm({
 
       if (saveAndNew && !isEditMode) {
         resetForm()
-        setIsSaving(false)
         return
       }
 
       window.location.assign(listHref)
     } catch (err) {
-      setIsSaving(false)
       toast.error(
         err instanceof Error ? err.message : "Failed to save voucher."
       )

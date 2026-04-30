@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test"
+import { E2E_EMAIL, E2E_PASSWORD } from "../test-user"
 
 /**
  * Unauthenticated auth flow tests.
@@ -35,12 +36,9 @@ test.describe("Sign-in page", () => {
   })
 
   test("successful sign-in redirects away from sign-in page", async ({ page }) => {
-    const email = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
-    const password = process.env.E2E_PASSWORD ?? "Mayank@1294"
-
     await page.goto("/sign-in")
-    await page.fill('input[type="email"]', email)
-    await page.fill('input[type="password"]', password)
+    await page.fill('input[type="email"]', E2E_EMAIL)
+    await page.fill('input[type="password"]', E2E_PASSWORD)
     await page.click('button[type="submit"]')
 
     // Should leave sign-in and land on the company dashboard or create-company.

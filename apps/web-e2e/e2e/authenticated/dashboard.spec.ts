@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test"
+import { E2E_EMAIL, E2E_PASSWORD } from "../test-user"
 
 /**
  * Authenticated dashboard tests.
@@ -7,9 +8,6 @@ import { test, expect, type Page } from "@playwright/test"
 
 /** Company slug pathname regex, e.g. /acme-corp */
 const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
-const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
-const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Mayank@1294"
-
 /**
  * The visible sidebar toggle button (SidebarTrigger lives inside the topbar).
  * shadcn also renders an invisible SidebarRail with the same aria-label, so we
@@ -112,11 +110,14 @@ test.describe("Dashboard layout", () => {
 
   test("sidebar footer shows user name, email and role", async ({ page }) => {
     await expandSidebar(page)
-    // Scope to the sidebar footer to avoid matching "owner" in the main content area
     const footer = page.locator('[data-sidebar="footer"]')
-    await expect(footer.getByText("suraj patil")).toBeVisible()
-    await expect(footer.getByText("suraz.patil@gmail.com")).toBeVisible()
-    await expect(footer.getByText(/owner/i)).toBeVisible()
+    const footerDetails = footer.locator("p")
+
+    await expect(footerDetails.nth(0)).toBeVisible()
+    await expect(footerDetails.nth(0)).not.toHaveText(/^\s*$/)
+    await expect(footerDetails.nth(1)).toHaveText(E2E_EMAIL)
+    await expect(footerDetails.nth(2)).toBeVisible()
+    await expect(footerDetails.nth(2)).toContainText(/owner|admin|viewer/i)
   })
 
   test("sidebar collapses and expands via toggle", async ({ page }) => {

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from "@playwright/test"
 import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { E2E_EMAIL } from "../test-user"
 
 const envFilePath = resolve(process.cwd(), "../web/.env.local")
 for (const line of readFileSync(envFilePath, "utf8").split("\n")) {
@@ -50,7 +51,6 @@ const { seedCompanyDefaults } =
   await import("@workspace/db/seeds/company-defaults")
 const { createCompanyRecord } = await import("@/lib/company-slug")
 
-const E2E_EMAIL = process.env.E2E_EMAIL ?? "suraz.patil@gmail.com"
 const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
 const FIXTURE_NAMES = {
   primaryName: `Settings Primary ${Date.now()}`,

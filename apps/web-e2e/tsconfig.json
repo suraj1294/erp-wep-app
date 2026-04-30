@@ -1,10 +1,10 @@
 {
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
-    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "types": ["node"],
     "paths": {
       "@/*": ["../web/*"],
       "@workspace/ui/*": ["../../packages/ui/src/*"],
