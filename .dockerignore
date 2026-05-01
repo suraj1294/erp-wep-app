@@ -24,3 +24,7 @@ build
 apps/web-e2e/test-results
 apps/web-e2e/playwright-report
 apps/web-e2e/.auth
+.vinxi
+**/.vinxi
+.output
+**/.output

@@ -52,5 +52,31 @@ services:
     ports:
       - "3000:3000"
 
+  web-start:
+    build:
+      context: .
+      dockerfile: Dockerfile.web-start
+    container_name: tally-erp-web-start
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://${POSTGRES_USER:-user}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-tally_erp}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-docker-local-secret-please-change-me-32}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3001}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-tally_erp}
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      DB_BOOTSTRAP_MODE: ${DB_BOOTSTRAP_MODE:-clean}
+      DEMO_USER_NAME: ${DEMO_USER_NAME:-Demo User}
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@example.com}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-password123}
+      DEMO_COMPANY_NAME: ${DEMO_COMPANY_NAME:-Acme Corp Ltd}
+    ports:
+      - "3001:3001"
+
 volumes:
   postgres_data:

@@ -13,7 +13,7 @@ import { test, expect, type Page } from "@playwright/test"
  */
 
 const COMPANY_PATH = /^\/[a-z0-9]+(?:-[a-z0-9]+)*(?:\/|$)/
-const AUTH_STORAGE_STATE = "e2e/.auth/user.json"
+const AUTH_STORAGE_STATE = "e2e/.auth/user-nextjs.json"
 
 // ---------------------------------------------------------------------------
 // Helpers
