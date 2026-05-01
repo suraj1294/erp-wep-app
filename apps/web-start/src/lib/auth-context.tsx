@@ -1,70 +1,70 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react"
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  image?: string | null;
+  id: string
+  name: string
+  email: string
+  emailVerified: boolean
 }
 
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-  isAuthenticated: boolean;
-  signOut: () => void;
-  refreshSession: () => Promise<void>;
+interface AuthContextValue {
+  user: User | null
+  loading: boolean
+  isAuthenticated: boolean
+  refreshSession: () => Promise<void>
+  signOut: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthState>({
+const AuthContext = createContext<AuthContextValue>({
   user: null,
   loading: true,
   isAuthenticated: false,
-  signOut: () => {},
   refreshSession: async () => {},
-});
+  signOut: async () => {},
+})
 
 export function useAuth() {
-  return useContext(AuthContext);
+  return useContext(AuthContext)
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const refreshSession = useCallback(async () => {
     try {
       const res = await fetch("/api/auth/get-session", {
         credentials: "include",
-      });
+      })
       if (res.ok) {
-        const data = await res.json();
-        if (data?.user) {
-          setUser(data.user);
-          return;
-        }
+        const data = await res.json()
+        setUser(data?.user ?? null)
+      } else {
+        setUser(null)
       }
-      setUser(null);
     } catch {
-      setUser(null);
+      setUser(null)
+    } finally {
+      setLoading(false)
     }
-  }, []);
-
-  useEffect(() => {
-    refreshSession().finally(() => setLoading(false));
-  }, [refreshSession]);
+  }, [])
 
   const signOut = useCallback(async () => {
     try {
       await fetch("/api/auth/sign-out", {
         method: "POST",
         credentials: "include",
-      });
-    } catch {}
-    setUser(null);
-    navigate({ to: "/sign-in" });
-  }, [navigate]);
+      })
+    } catch {
+      // ignore
+    }
+    setUser(null)
+    window.location.href = "/sign-in"
+  }, [])
+
+  useEffect(() => {
+    refreshSession()
+  }, [refreshSession])
 
   return (
     <AuthContext.Provider
@@ -72,11 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         loading,
         isAuthenticated: !!user,
-        signOut,
         refreshSession,
+        signOut,
       }}
     >
       {children}
     </AuthContext.Provider>
-  );
+  )
 }

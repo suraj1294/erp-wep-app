@@ -15,22 +15,18 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppCompanySlugRouteImport } from './routes/app/$companySlug'
 import { Route as AppCompanySlugIndexRouteImport } from './routes/app/$companySlug/index'
-import { Route as ApiCompaniesIndexRouteImport } from './routes/api/companies/index'
-import { Route as AppCompanySlugMastersRouteImport } from './routes/app/$companySlug/masters'
 import { Route as ApiCompaniesActiveRouteImport } from './routes/api/companies/active'
 import { Route as ApiCompaniesAccessibleRouteImport } from './routes/api/companies/accessible'
 import { Route as ApiAuthPathRouteImport } from './routes/api/auth/$path'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppCompanySlugMastersIndexRouteImport } from './routes/app/$companySlug/masters/index'
-import { Route as ApiCompaniesCompanySlugDashboardRouteImport } from './routes/api/companies/$companySlug/dashboard'
-import { Route as AppCompanySlugMastersVoucherTypesIndexRouteImport } from './routes/app/$companySlug/masters/voucher-types/index'
-import { Route as AppCompanySlugMastersUnitsIndexRouteImport } from './routes/app/$companySlug/masters/units/index'
-import { Route as AppCompanySlugMastersPartiesIndexRouteImport } from './routes/app/$companySlug/masters/parties/index'
-import { Route as AppCompanySlugMastersItemsIndexRouteImport } from './routes/app/$companySlug/masters/items/index'
-import { Route as AppCompanySlugMastersAccountsIndexRouteImport } from './routes/app/$companySlug/masters/accounts/index'
-import { Route as AppCompanySlugMastersAccountGroupsIndexRouteImport } from './routes/app/$companySlug/masters/account-groups/index'
+import { Route as AppCompanySlugMastersVoucherTypesRouteImport } from './routes/app/$companySlug/masters/voucher-types'
+import { Route as AppCompanySlugMastersUnitsRouteImport } from './routes/app/$companySlug/masters/units'
+import { Route as AppCompanySlugMastersPartiesRouteImport } from './routes/app/$companySlug/masters/parties'
+import { Route as AppCompanySlugMastersItemsRouteImport } from './routes/app/$companySlug/masters/items'
+import { Route as AppCompanySlugMastersAccountsRouteImport } from './routes/app/$companySlug/masters/accounts'
+import { Route as AppCompanySlugMastersAccountGroupsRouteImport } from './routes/app/$companySlug/masters/account-groups'
 import { Route as ApiCompaniesCompanySlugMastersResourceRouteImport } from './routes/api/companies/$companySlug/masters/$resource'
-import { Route as ApiCompaniesCompanySlugMastersResourceIdRouteImport } from './routes/api/companies/$companySlug/masters/$resource/$id'
 
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
@@ -62,16 +58,6 @@ const AppCompanySlugIndexRoute = AppCompanySlugIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppCompanySlugRoute,
 } as any)
-const ApiCompaniesIndexRoute = ApiCompaniesIndexRouteImport.update({
-  id: '/api/companies/',
-  path: '/api/companies/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AppCompanySlugMastersRoute = AppCompanySlugMastersRouteImport.update({
-  id: '/masters',
-  path: '/masters',
-  getParentRoute: () => AppCompanySlugRoute,
-} as any)
 const ApiCompaniesActiveRoute = ApiCompaniesActiveRouteImport.update({
   id: '/api/companies/active',
   path: '/api/companies/active',
@@ -94,63 +80,51 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 const AppCompanySlugMastersIndexRoute =
   AppCompanySlugMastersIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
+    id: '/masters/',
+    path: '/masters/',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
-const ApiCompaniesCompanySlugDashboardRoute =
-  ApiCompaniesCompanySlugDashboardRouteImport.update({
-    id: '/api/companies/$companySlug/dashboard',
-    path: '/api/companies/$companySlug/dashboard',
-    getParentRoute: () => rootRouteImport,
+const AppCompanySlugMastersVoucherTypesRoute =
+  AppCompanySlugMastersVoucherTypesRouteImport.update({
+    id: '/masters/voucher-types',
+    path: '/masters/voucher-types',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
-const AppCompanySlugMastersVoucherTypesIndexRoute =
-  AppCompanySlugMastersVoucherTypesIndexRouteImport.update({
-    id: '/voucher-types/',
-    path: '/voucher-types/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
+const AppCompanySlugMastersUnitsRoute =
+  AppCompanySlugMastersUnitsRouteImport.update({
+    id: '/masters/units',
+    path: '/masters/units',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
-const AppCompanySlugMastersUnitsIndexRoute =
-  AppCompanySlugMastersUnitsIndexRouteImport.update({
-    id: '/units/',
-    path: '/units/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
+const AppCompanySlugMastersPartiesRoute =
+  AppCompanySlugMastersPartiesRouteImport.update({
+    id: '/masters/parties',
+    path: '/masters/parties',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
-const AppCompanySlugMastersPartiesIndexRoute =
-  AppCompanySlugMastersPartiesIndexRouteImport.update({
-    id: '/parties/',
-    path: '/parties/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
+const AppCompanySlugMastersItemsRoute =
+  AppCompanySlugMastersItemsRouteImport.update({
+    id: '/masters/items',
+    path: '/masters/items',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
-const AppCompanySlugMastersItemsIndexRoute =
-  AppCompanySlugMastersItemsIndexRouteImport.update({
-    id: '/items/',
-    path: '/items/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
+const AppCompanySlugMastersAccountsRoute =
+  AppCompanySlugMastersAccountsRouteImport.update({
+    id: '/masters/accounts',
+    path: '/masters/accounts',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
-const AppCompanySlugMastersAccountsIndexRoute =
-  AppCompanySlugMastersAccountsIndexRouteImport.update({
-    id: '/accounts/',
-    path: '/accounts/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
-  } as any)
-const AppCompanySlugMastersAccountGroupsIndexRoute =
-  AppCompanySlugMastersAccountGroupsIndexRouteImport.update({
-    id: '/account-groups/',
-    path: '/account-groups/',
-    getParentRoute: () => AppCompanySlugMastersRoute,
+const AppCompanySlugMastersAccountGroupsRoute =
+  AppCompanySlugMastersAccountGroupsRouteImport.update({
+    id: '/masters/account-groups',
+    path: '/masters/account-groups',
+    getParentRoute: () => AppCompanySlugRoute,
   } as any)
 const ApiCompaniesCompanySlugMastersResourceRoute =
   ApiCompaniesCompanySlugMastersResourceRouteImport.update({
     id: '/api/companies/$companySlug/masters/$resource',
     path: '/api/companies/$companySlug/masters/$resource',
     getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiCompaniesCompanySlugMastersResourceIdRoute =
-  ApiCompaniesCompanySlugMastersResourceIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => ApiCompaniesCompanySlugMastersResourceRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -163,19 +137,15 @@ export interface FileRoutesByFullPath {
   '/api/auth/$path': typeof ApiAuthPathRoute
   '/api/companies/accessible': typeof ApiCompaniesAccessibleRoute
   '/api/companies/active': typeof ApiCompaniesActiveRoute
-  '/app/$companySlug/masters': typeof AppCompanySlugMastersRouteWithChildren
-  '/api/companies/': typeof ApiCompaniesIndexRoute
   '/app/$companySlug/': typeof AppCompanySlugIndexRoute
-  '/api/companies/$companySlug/dashboard': typeof ApiCompaniesCompanySlugDashboardRoute
+  '/app/$companySlug/masters/account-groups': typeof AppCompanySlugMastersAccountGroupsRoute
+  '/app/$companySlug/masters/accounts': typeof AppCompanySlugMastersAccountsRoute
+  '/app/$companySlug/masters/items': typeof AppCompanySlugMastersItemsRoute
+  '/app/$companySlug/masters/parties': typeof AppCompanySlugMastersPartiesRoute
+  '/app/$companySlug/masters/units': typeof AppCompanySlugMastersUnitsRoute
+  '/app/$companySlug/masters/voucher-types': typeof AppCompanySlugMastersVoucherTypesRoute
   '/app/$companySlug/masters/': typeof AppCompanySlugMastersIndexRoute
-  '/api/companies/$companySlug/masters/$resource': typeof ApiCompaniesCompanySlugMastersResourceRouteWithChildren
-  '/app/$companySlug/masters/account-groups/': typeof AppCompanySlugMastersAccountGroupsIndexRoute
-  '/app/$companySlug/masters/accounts/': typeof AppCompanySlugMastersAccountsIndexRoute
-  '/app/$companySlug/masters/items/': typeof AppCompanySlugMastersItemsIndexRoute
-  '/app/$companySlug/masters/parties/': typeof AppCompanySlugMastersPartiesIndexRoute
-  '/app/$companySlug/masters/units/': typeof AppCompanySlugMastersUnitsIndexRoute
-  '/app/$companySlug/masters/voucher-types/': typeof AppCompanySlugMastersVoucherTypesIndexRoute
-  '/api/companies/$companySlug/masters/$resource/$id': typeof ApiCompaniesCompanySlugMastersResourceIdRoute
+  '/api/companies/$companySlug/masters/$resource': typeof ApiCompaniesCompanySlugMastersResourceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -185,18 +155,15 @@ export interface FileRoutesByTo {
   '/api/auth/$path': typeof ApiAuthPathRoute
   '/api/companies/accessible': typeof ApiCompaniesAccessibleRoute
   '/api/companies/active': typeof ApiCompaniesActiveRoute
-  '/api/companies': typeof ApiCompaniesIndexRoute
   '/app/$companySlug': typeof AppCompanySlugIndexRoute
-  '/api/companies/$companySlug/dashboard': typeof ApiCompaniesCompanySlugDashboardRoute
+  '/app/$companySlug/masters/account-groups': typeof AppCompanySlugMastersAccountGroupsRoute
+  '/app/$companySlug/masters/accounts': typeof AppCompanySlugMastersAccountsRoute
+  '/app/$companySlug/masters/items': typeof AppCompanySlugMastersItemsRoute
+  '/app/$companySlug/masters/parties': typeof AppCompanySlugMastersPartiesRoute
+  '/app/$companySlug/masters/units': typeof AppCompanySlugMastersUnitsRoute
+  '/app/$companySlug/masters/voucher-types': typeof AppCompanySlugMastersVoucherTypesRoute
   '/app/$companySlug/masters': typeof AppCompanySlugMastersIndexRoute
-  '/api/companies/$companySlug/masters/$resource': typeof ApiCompaniesCompanySlugMastersResourceRouteWithChildren
-  '/app/$companySlug/masters/account-groups': typeof AppCompanySlugMastersAccountGroupsIndexRoute
-  '/app/$companySlug/masters/accounts': typeof AppCompanySlugMastersAccountsIndexRoute
-  '/app/$companySlug/masters/items': typeof AppCompanySlugMastersItemsIndexRoute
-  '/app/$companySlug/masters/parties': typeof AppCompanySlugMastersPartiesIndexRoute
-  '/app/$companySlug/masters/units': typeof AppCompanySlugMastersUnitsIndexRoute
-  '/app/$companySlug/masters/voucher-types': typeof AppCompanySlugMastersVoucherTypesIndexRoute
-  '/api/companies/$companySlug/masters/$resource/$id': typeof ApiCompaniesCompanySlugMastersResourceIdRoute
+  '/api/companies/$companySlug/masters/$resource': typeof ApiCompaniesCompanySlugMastersResourceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,19 +176,15 @@ export interface FileRoutesById {
   '/api/auth/$path': typeof ApiAuthPathRoute
   '/api/companies/accessible': typeof ApiCompaniesAccessibleRoute
   '/api/companies/active': typeof ApiCompaniesActiveRoute
-  '/app/$companySlug/masters': typeof AppCompanySlugMastersRouteWithChildren
-  '/api/companies/': typeof ApiCompaniesIndexRoute
   '/app/$companySlug/': typeof AppCompanySlugIndexRoute
-  '/api/companies/$companySlug/dashboard': typeof ApiCompaniesCompanySlugDashboardRoute
+  '/app/$companySlug/masters/account-groups': typeof AppCompanySlugMastersAccountGroupsRoute
+  '/app/$companySlug/masters/accounts': typeof AppCompanySlugMastersAccountsRoute
+  '/app/$companySlug/masters/items': typeof AppCompanySlugMastersItemsRoute
+  '/app/$companySlug/masters/parties': typeof AppCompanySlugMastersPartiesRoute
+  '/app/$companySlug/masters/units': typeof AppCompanySlugMastersUnitsRoute
+  '/app/$companySlug/masters/voucher-types': typeof AppCompanySlugMastersVoucherTypesRoute
   '/app/$companySlug/masters/': typeof AppCompanySlugMastersIndexRoute
-  '/api/companies/$companySlug/masters/$resource': typeof ApiCompaniesCompanySlugMastersResourceRouteWithChildren
-  '/app/$companySlug/masters/account-groups/': typeof AppCompanySlugMastersAccountGroupsIndexRoute
-  '/app/$companySlug/masters/accounts/': typeof AppCompanySlugMastersAccountsIndexRoute
-  '/app/$companySlug/masters/items/': typeof AppCompanySlugMastersItemsIndexRoute
-  '/app/$companySlug/masters/parties/': typeof AppCompanySlugMastersPartiesIndexRoute
-  '/app/$companySlug/masters/units/': typeof AppCompanySlugMastersUnitsIndexRoute
-  '/app/$companySlug/masters/voucher-types/': typeof AppCompanySlugMastersVoucherTypesIndexRoute
-  '/api/companies/$companySlug/masters/$resource/$id': typeof ApiCompaniesCompanySlugMastersResourceIdRoute
+  '/api/companies/$companySlug/masters/$resource': typeof ApiCompaniesCompanySlugMastersResourceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -235,19 +198,15 @@ export interface FileRouteTypes {
     | '/api/auth/$path'
     | '/api/companies/accessible'
     | '/api/companies/active'
-    | '/app/$companySlug/masters'
-    | '/api/companies/'
     | '/app/$companySlug/'
-    | '/api/companies/$companySlug/dashboard'
+    | '/app/$companySlug/masters/account-groups'
+    | '/app/$companySlug/masters/accounts'
+    | '/app/$companySlug/masters/items'
+    | '/app/$companySlug/masters/parties'
+    | '/app/$companySlug/masters/units'
+    | '/app/$companySlug/masters/voucher-types'
     | '/app/$companySlug/masters/'
     | '/api/companies/$companySlug/masters/$resource'
-    | '/app/$companySlug/masters/account-groups/'
-    | '/app/$companySlug/masters/accounts/'
-    | '/app/$companySlug/masters/items/'
-    | '/app/$companySlug/masters/parties/'
-    | '/app/$companySlug/masters/units/'
-    | '/app/$companySlug/masters/voucher-types/'
-    | '/api/companies/$companySlug/masters/$resource/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -257,18 +216,15 @@ export interface FileRouteTypes {
     | '/api/auth/$path'
     | '/api/companies/accessible'
     | '/api/companies/active'
-    | '/api/companies'
     | '/app/$companySlug'
-    | '/api/companies/$companySlug/dashboard'
-    | '/app/$companySlug/masters'
-    | '/api/companies/$companySlug/masters/$resource'
     | '/app/$companySlug/masters/account-groups'
     | '/app/$companySlug/masters/accounts'
     | '/app/$companySlug/masters/items'
     | '/app/$companySlug/masters/parties'
     | '/app/$companySlug/masters/units'
     | '/app/$companySlug/masters/voucher-types'
-    | '/api/companies/$companySlug/masters/$resource/$id'
+    | '/app/$companySlug/masters'
+    | '/api/companies/$companySlug/masters/$resource'
   id:
     | '__root__'
     | '/'
@@ -280,19 +236,15 @@ export interface FileRouteTypes {
     | '/api/auth/$path'
     | '/api/companies/accessible'
     | '/api/companies/active'
-    | '/app/$companySlug/masters'
-    | '/api/companies/'
     | '/app/$companySlug/'
-    | '/api/companies/$companySlug/dashboard'
+    | '/app/$companySlug/masters/account-groups'
+    | '/app/$companySlug/masters/accounts'
+    | '/app/$companySlug/masters/items'
+    | '/app/$companySlug/masters/parties'
+    | '/app/$companySlug/masters/units'
+    | '/app/$companySlug/masters/voucher-types'
     | '/app/$companySlug/masters/'
     | '/api/companies/$companySlug/masters/$resource'
-    | '/app/$companySlug/masters/account-groups/'
-    | '/app/$companySlug/masters/accounts/'
-    | '/app/$companySlug/masters/items/'
-    | '/app/$companySlug/masters/parties/'
-    | '/app/$companySlug/masters/units/'
-    | '/app/$companySlug/masters/voucher-types/'
-    | '/api/companies/$companySlug/masters/$resource/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -303,9 +255,7 @@ export interface RootRouteChildren {
   ApiAuthPathRoute: typeof ApiAuthPathRoute
   ApiCompaniesAccessibleRoute: typeof ApiCompaniesAccessibleRoute
   ApiCompaniesActiveRoute: typeof ApiCompaniesActiveRoute
-  ApiCompaniesIndexRoute: typeof ApiCompaniesIndexRoute
-  ApiCompaniesCompanySlugDashboardRoute: typeof ApiCompaniesCompanySlugDashboardRoute
-  ApiCompaniesCompanySlugMastersResourceRoute: typeof ApiCompaniesCompanySlugMastersResourceRouteWithChildren
+  ApiCompaniesCompanySlugMastersResourceRoute: typeof ApiCompaniesCompanySlugMastersResourceRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -352,20 +302,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppCompanySlugIndexRouteImport
       parentRoute: typeof AppCompanySlugRoute
     }
-    '/api/companies/': {
-      id: '/api/companies/'
-      path: '/api/companies'
-      fullPath: '/api/companies/'
-      preLoaderRoute: typeof ApiCompaniesIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/app/$companySlug/masters': {
-      id: '/app/$companySlug/masters'
-      path: '/masters'
-      fullPath: '/app/$companySlug/masters'
-      preLoaderRoute: typeof AppCompanySlugMastersRouteImport
-      parentRoute: typeof AppCompanySlugRoute
-    }
     '/api/companies/active': {
       id: '/api/companies/active'
       path: '/api/companies/active'
@@ -396,59 +332,52 @@ declare module '@tanstack/react-router' {
     }
     '/app/$companySlug/masters/': {
       id: '/app/$companySlug/masters/'
-      path: '/'
+      path: '/masters'
       fullPath: '/app/$companySlug/masters/'
       preLoaderRoute: typeof AppCompanySlugMastersIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
+      parentRoute: typeof AppCompanySlugRoute
     }
-    '/api/companies/$companySlug/dashboard': {
-      id: '/api/companies/$companySlug/dashboard'
-      path: '/api/companies/$companySlug/dashboard'
-      fullPath: '/api/companies/$companySlug/dashboard'
-      preLoaderRoute: typeof ApiCompaniesCompanySlugDashboardRouteImport
-      parentRoute: typeof rootRouteImport
+    '/app/$companySlug/masters/voucher-types': {
+      id: '/app/$companySlug/masters/voucher-types'
+      path: '/masters/voucher-types'
+      fullPath: '/app/$companySlug/masters/voucher-types'
+      preLoaderRoute: typeof AppCompanySlugMastersVoucherTypesRouteImport
+      parentRoute: typeof AppCompanySlugRoute
     }
-    '/app/$companySlug/masters/voucher-types/': {
-      id: '/app/$companySlug/masters/voucher-types/'
-      path: '/voucher-types'
-      fullPath: '/app/$companySlug/masters/voucher-types/'
-      preLoaderRoute: typeof AppCompanySlugMastersVoucherTypesIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
+    '/app/$companySlug/masters/units': {
+      id: '/app/$companySlug/masters/units'
+      path: '/masters/units'
+      fullPath: '/app/$companySlug/masters/units'
+      preLoaderRoute: typeof AppCompanySlugMastersUnitsRouteImport
+      parentRoute: typeof AppCompanySlugRoute
     }
-    '/app/$companySlug/masters/units/': {
-      id: '/app/$companySlug/masters/units/'
-      path: '/units'
-      fullPath: '/app/$companySlug/masters/units/'
-      preLoaderRoute: typeof AppCompanySlugMastersUnitsIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
+    '/app/$companySlug/masters/parties': {
+      id: '/app/$companySlug/masters/parties'
+      path: '/masters/parties'
+      fullPath: '/app/$companySlug/masters/parties'
+      preLoaderRoute: typeof AppCompanySlugMastersPartiesRouteImport
+      parentRoute: typeof AppCompanySlugRoute
     }
-    '/app/$companySlug/masters/parties/': {
-      id: '/app/$companySlug/masters/parties/'
-      path: '/parties'
-      fullPath: '/app/$companySlug/masters/parties/'
-      preLoaderRoute: typeof AppCompanySlugMastersPartiesIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
+    '/app/$companySlug/masters/items': {
+      id: '/app/$companySlug/masters/items'
+      path: '/masters/items'
+      fullPath: '/app/$companySlug/masters/items'
+      preLoaderRoute: typeof AppCompanySlugMastersItemsRouteImport
+      parentRoute: typeof AppCompanySlugRoute
     }
-    '/app/$companySlug/masters/items/': {
-      id: '/app/$companySlug/masters/items/'
-      path: '/items'
-      fullPath: '/app/$companySlug/masters/items/'
-      preLoaderRoute: typeof AppCompanySlugMastersItemsIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
+    '/app/$companySlug/masters/accounts': {
+      id: '/app/$companySlug/masters/accounts'
+      path: '/masters/accounts'
+      fullPath: '/app/$companySlug/masters/accounts'
+      preLoaderRoute: typeof AppCompanySlugMastersAccountsRouteImport
+      parentRoute: typeof AppCompanySlugRoute
     }
-    '/app/$companySlug/masters/accounts/': {
-      id: '/app/$companySlug/masters/accounts/'
-      path: '/accounts'
-      fullPath: '/app/$companySlug/masters/accounts/'
-      preLoaderRoute: typeof AppCompanySlugMastersAccountsIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
-    }
-    '/app/$companySlug/masters/account-groups/': {
-      id: '/app/$companySlug/masters/account-groups/'
-      path: '/account-groups'
-      fullPath: '/app/$companySlug/masters/account-groups/'
-      preLoaderRoute: typeof AppCompanySlugMastersAccountGroupsIndexRouteImport
-      parentRoute: typeof AppCompanySlugMastersRoute
+    '/app/$companySlug/masters/account-groups': {
+      id: '/app/$companySlug/masters/account-groups'
+      path: '/masters/account-groups'
+      fullPath: '/app/$companySlug/masters/account-groups'
+      preLoaderRoute: typeof AppCompanySlugMastersAccountGroupsRouteImport
+      parentRoute: typeof AppCompanySlugRoute
     }
     '/api/companies/$companySlug/masters/$resource': {
       id: '/api/companies/$companySlug/masters/$resource'
@@ -457,53 +386,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCompaniesCompanySlugMastersResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/companies/$companySlug/masters/$resource/$id': {
-      id: '/api/companies/$companySlug/masters/$resource/$id'
-      path: '/$id'
-      fullPath: '/api/companies/$companySlug/masters/$resource/$id'
-      preLoaderRoute: typeof ApiCompaniesCompanySlugMastersResourceIdRouteImport
-      parentRoute: typeof ApiCompaniesCompanySlugMastersResourceRoute
-    }
   }
 }
 
-interface AppCompanySlugMastersRouteChildren {
-  AppCompanySlugMastersIndexRoute: typeof AppCompanySlugMastersIndexRoute
-  AppCompanySlugMastersAccountGroupsIndexRoute: typeof AppCompanySlugMastersAccountGroupsIndexRoute
-  AppCompanySlugMastersAccountsIndexRoute: typeof AppCompanySlugMastersAccountsIndexRoute
-  AppCompanySlugMastersItemsIndexRoute: typeof AppCompanySlugMastersItemsIndexRoute
-  AppCompanySlugMastersPartiesIndexRoute: typeof AppCompanySlugMastersPartiesIndexRoute
-  AppCompanySlugMastersUnitsIndexRoute: typeof AppCompanySlugMastersUnitsIndexRoute
-  AppCompanySlugMastersVoucherTypesIndexRoute: typeof AppCompanySlugMastersVoucherTypesIndexRoute
-}
-
-const AppCompanySlugMastersRouteChildren: AppCompanySlugMastersRouteChildren = {
-  AppCompanySlugMastersIndexRoute: AppCompanySlugMastersIndexRoute,
-  AppCompanySlugMastersAccountGroupsIndexRoute:
-    AppCompanySlugMastersAccountGroupsIndexRoute,
-  AppCompanySlugMastersAccountsIndexRoute:
-    AppCompanySlugMastersAccountsIndexRoute,
-  AppCompanySlugMastersItemsIndexRoute: AppCompanySlugMastersItemsIndexRoute,
-  AppCompanySlugMastersPartiesIndexRoute:
-    AppCompanySlugMastersPartiesIndexRoute,
-  AppCompanySlugMastersUnitsIndexRoute: AppCompanySlugMastersUnitsIndexRoute,
-  AppCompanySlugMastersVoucherTypesIndexRoute:
-    AppCompanySlugMastersVoucherTypesIndexRoute,
-}
-
-const AppCompanySlugMastersRouteWithChildren =
-  AppCompanySlugMastersRoute._addFileChildren(
-    AppCompanySlugMastersRouteChildren,
-  )
-
 interface AppCompanySlugRouteChildren {
-  AppCompanySlugMastersRoute: typeof AppCompanySlugMastersRouteWithChildren
   AppCompanySlugIndexRoute: typeof AppCompanySlugIndexRoute
+  AppCompanySlugMastersAccountGroupsRoute: typeof AppCompanySlugMastersAccountGroupsRoute
+  AppCompanySlugMastersAccountsRoute: typeof AppCompanySlugMastersAccountsRoute
+  AppCompanySlugMastersItemsRoute: typeof AppCompanySlugMastersItemsRoute
+  AppCompanySlugMastersPartiesRoute: typeof AppCompanySlugMastersPartiesRoute
+  AppCompanySlugMastersUnitsRoute: typeof AppCompanySlugMastersUnitsRoute
+  AppCompanySlugMastersVoucherTypesRoute: typeof AppCompanySlugMastersVoucherTypesRoute
+  AppCompanySlugMastersIndexRoute: typeof AppCompanySlugMastersIndexRoute
 }
 
 const AppCompanySlugRouteChildren: AppCompanySlugRouteChildren = {
-  AppCompanySlugMastersRoute: AppCompanySlugMastersRouteWithChildren,
   AppCompanySlugIndexRoute: AppCompanySlugIndexRoute,
+  AppCompanySlugMastersAccountGroupsRoute:
+    AppCompanySlugMastersAccountGroupsRoute,
+  AppCompanySlugMastersAccountsRoute: AppCompanySlugMastersAccountsRoute,
+  AppCompanySlugMastersItemsRoute: AppCompanySlugMastersItemsRoute,
+  AppCompanySlugMastersPartiesRoute: AppCompanySlugMastersPartiesRoute,
+  AppCompanySlugMastersUnitsRoute: AppCompanySlugMastersUnitsRoute,
+  AppCompanySlugMastersVoucherTypesRoute:
+    AppCompanySlugMastersVoucherTypesRoute,
+  AppCompanySlugMastersIndexRoute: AppCompanySlugMastersIndexRoute,
 }
 
 const AppCompanySlugRouteWithChildren = AppCompanySlugRoute._addFileChildren(
@@ -522,21 +429,6 @@ const AppRouteChildren: AppRouteChildren = {
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
-interface ApiCompaniesCompanySlugMastersResourceRouteChildren {
-  ApiCompaniesCompanySlugMastersResourceIdRoute: typeof ApiCompaniesCompanySlugMastersResourceIdRoute
-}
-
-const ApiCompaniesCompanySlugMastersResourceRouteChildren: ApiCompaniesCompanySlugMastersResourceRouteChildren =
-  {
-    ApiCompaniesCompanySlugMastersResourceIdRoute:
-      ApiCompaniesCompanySlugMastersResourceIdRoute,
-  }
-
-const ApiCompaniesCompanySlugMastersResourceRouteWithChildren =
-  ApiCompaniesCompanySlugMastersResourceRoute._addFileChildren(
-    ApiCompaniesCompanySlugMastersResourceRouteChildren,
-  )
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
@@ -545,10 +437,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAuthPathRoute: ApiAuthPathRoute,
   ApiCompaniesAccessibleRoute: ApiCompaniesAccessibleRoute,
   ApiCompaniesActiveRoute: ApiCompaniesActiveRoute,
-  ApiCompaniesIndexRoute: ApiCompaniesIndexRoute,
-  ApiCompaniesCompanySlugDashboardRoute: ApiCompaniesCompanySlugDashboardRoute,
   ApiCompaniesCompanySlugMastersResourceRoute:
-    ApiCompaniesCompanySlugMastersResourceRouteWithChildren,
+    ApiCompaniesCompanySlugMastersResourceRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

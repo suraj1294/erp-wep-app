@@ -1,5 +1,5 @@
-export async function handleAuthRequest(request: Request) {
-  const { auth } = await import("@/lib/auth");
+import { auth } from "./auth"
 
-  return auth.handler(request);
+export async function handleAuthRequest(request: Request) {
+  return auth.handler(request)
 }

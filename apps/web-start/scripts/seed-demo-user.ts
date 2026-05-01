@@ -15,21 +15,17 @@ import {
 
 function getEnv(name: string, fallback: string) {
   const value = process.env[name]?.trim()
-
-  if (!value) {
-    return fallback
-  }
-
+  if (!value) return fallback
   return value
 }
 
 const demoUserName = getEnv("DEMO_USER_NAME", "Demo User")
-const demoUserEmail = getEnv("DEMO_USER_EMAIL", "demo@example.com").toLowerCase()
-const demoUserPassword = getEnv("DEMO_USER_PASSWORD", "password123")
+const demoUserEmail = getEnv("E2E_EMAIL", getEnv("DEMO_USER_EMAIL", "demo@example.com")).toLowerCase()
+const demoUserPassword = getEnv("E2E_PASSWORD", getEnv("DEMO_USER_PASSWORD", "password123"))
 const demoCompanyName = getEnv("DEMO_COMPANY_NAME", "Acme Corp Ltd")
 
 async function ensureDemoUser() {
-  const existingUserRows = await db
+  const [existingUser] = await db
     .select({
       id: user.id,
       name: user.name,
@@ -41,9 +37,7 @@ async function ensureDemoUser() {
 
   const passwordHash = await hashPassword(demoUserPassword)
 
-  if (existingUserRows.length > 0) {
-    const existingUser = existingUserRows[0]
-
+  if (existingUser) {
     await db
       .update(user)
       .set({
@@ -53,20 +47,15 @@ async function ensureDemoUser() {
       })
       .where(eq(user.id, existingUser.id))
 
-    const credentialAccountRows = await db
+    const [credentialAccount] = await db
       .select({ id: account.id })
       .from(account)
       .where(
-        and(
-          eq(account.userId, existingUser.id),
-          eq(account.providerId, "credential")
-        )
+        and(eq(account.userId, existingUser.id), eq(account.providerId, "credential"))
       )
       .limit(1)
 
-    if (credentialAccountRows.length > 0) {
-      const credentialAccount = credentialAccountRows[0]
-
+    if (credentialAccount) {
       await db
         .update(account)
         .set({
@@ -109,7 +98,7 @@ async function ensureDemoUser() {
 }
 
 async function ensureCompany(userId: string) {
-  const existingCompanyRows = await db
+  const [existingCompany] = await db
     .select({
       id: companies.id,
       name: companies.name,
@@ -118,17 +107,13 @@ async function ensureCompany(userId: string) {
     .from(companyUsers)
     .innerJoin(companies, eq(companyUsers.companyId, companies.id))
     .where(
-      and(
-        eq(companyUsers.userId, userId),
-        eq(companyUsers.isActive, true),
-        eq(companies.isActive, true)
-      )
+      and(eq(companyUsers.userId, userId), eq(companyUsers.isActive, true), eq(companies.isActive, true))
     )
     .orderBy(asc(companies.createdAt))
     .limit(1)
 
-  if (existingCompanyRows.length > 0) {
-    return existingCompanyRows[0]
+  if (existingCompany) {
+    return existingCompany
   }
 
   const company = await createCompanyRecord({

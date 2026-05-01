@@ -13,9 +13,9 @@ setup("sign in and save session", async ({ page }) => {
   const webStartDir = path.join(import.meta.dirname, "../../web-start")
   const env = {
     ...process.env,
-    DATABASE_URL: "postgresql://ipalace@localhost:5432/tally_erp",
+    DATABASE_URL: process.env.DATABASE_URL ?? "postgresql://user:password@localhost:5433/tally_erp",
   }
-  
+
   try {
     await execAsync("pnpm exec tsx ./scripts/seed-demo-user.ts", {
       cwd: webStartDir,

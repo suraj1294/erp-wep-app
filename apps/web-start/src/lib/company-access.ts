@@ -1,27 +1,41 @@
-export async function requireCompanyAccess(request: Request, companySlug: string) {
-  const { auth } = await import("@/lib/auth");
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user) {
-    throw new Error("Unauthorized");
+import { getCompanyAccessMembership } from "@workspace/db"
+import { requireSession } from "./auth-server"
+
+const ROLE_HIERARCHY: Record<string, number> = {
+  viewer: 0,
+  accountant: 1,
+  admin: 2,
+  owner: 3,
+}
+
+export async function requireCompanyAccess(request: Request, companySlug: string, minimumRole?: string) {
+  const session = await requireSession(request)
+  const membership = await getCompanyAccessMembership(session.user.id, companySlug)
+
+  if (!membership) {
+    throw new Error("You do not have access to this company")
   }
 
-  const { getCompanyAccessMembership } = await import("@workspace/db");
-  const membership = await getCompanyAccessMembership(session.user.id, companySlug);
-  // Drizzle's inferred select type can confuse no-unnecessary-condition here.
-  // Runtime access checks still need to handle a missing membership.
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (!membership) {
-    throw new Error("You do not have access to this company");
+  if (minimumRole) {
+    const userLevel = ROLE_HIERARCHY[membership.role] ?? 0
+    const requiredLevel = ROLE_HIERARCHY[minimumRole] ?? 0
+    if (userLevel < requiredLevel) {
+      throw new Error("Insufficient permissions")
+    }
   }
 
   return {
     session,
-    membership,
+    membership: {
+      id: membership.id,
+      role: membership.role,
+      isActive: membership.isActive,
+    },
     company: {
       id: membership.companyId,
       slug: membership.companySlug,
       name: membership.companyName,
       displayName: membership.companyDisplayName,
     },
-  };
+  }
 }
